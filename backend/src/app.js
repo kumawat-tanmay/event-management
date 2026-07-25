@@ -14,6 +14,23 @@ app.disable('etag');
 // 1. Trust Proxy (Important for Rate Limiting behind Load Balancers)
 app.set('trust proxy', 1);
 
+// 1.5 Vercel Serverless Database Connection Middleware
+app.use(async (req, res, next) => {
+  if (process.env.VERCEL) {
+    const mongoose = require('mongoose');
+    if (mongoose.connection.readyState !== 1) {
+      try {
+        const connectDB = require('./config/db');
+        await connectDB();
+      } catch (err) {
+        console.error('❌ DB Connection failed on Vercel:', err.message);
+        return res.status(500).json({ success: false, message: 'Database Connection Error' });
+      }
+    }
+  }
+  next();
+});
+
 // 2. CORS config
 const allowedOrigins = [
   process.env.FRONTEND_URL,
