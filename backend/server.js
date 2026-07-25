@@ -20,8 +20,17 @@ const ensureConnection = async () => {
 
 // ─── Vercel Serverless Mode ─────────────────────────────
 if (process.env.VERCEL) {
-  ensureConnection().catch(err => {
-    console.error('❌ MongoDB Connection failed on Vercel:', err.message);
+  // Add middleware to ensure DB connection before handling any request
+  app.use(async (req, res, next) => {
+    try {
+      if (!isConnected) {
+        await ensureConnection();
+      }
+      next();
+    } catch (err) {
+      console.error('❌ MongoDB Connection failed on Vercel:', err.message);
+      res.status(500).json({ success: false, message: 'Database Connection Error' });
+    }
   });
   module.exports = app;
 } else {
