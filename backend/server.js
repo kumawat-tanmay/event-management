@@ -20,6 +20,9 @@ const ensureConnection = async () => {
 
 // ─── Vercel Serverless Mode ─────────────────────────────
 if (process.env.VERCEL) {
+  ensureConnection().catch(err => {
+    console.error('❌ MongoDB Connection failed on Vercel:', err.message);
+  });
   module.exports = app;
 } else {
   // ─── Local / Production Server Mode ─────────────────────
