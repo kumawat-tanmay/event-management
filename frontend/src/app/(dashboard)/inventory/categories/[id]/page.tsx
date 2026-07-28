@@ -1,10 +1,5 @@
-import { CategoryDetailView } from '@/components/dashboard/inventory/categories/CategoryDetailView';
+import { redirect } from 'next/navigation';
 
-export const metadata = {
-  title: 'Category Details | Krishna Events ERP',
-  description: 'View category details',
-};
-
-export default function CategoryDetailPage() {
-  return <CategoryDetailView />;
+export default function RedirectPage() {
+  redirect('/inventory/items');
 }

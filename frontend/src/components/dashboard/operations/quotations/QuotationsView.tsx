@@ -1,107 +1,123 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useTranslation } from 'react-i18next';
 import { Plus, Download, FileText, Eye, Edit, Trash2, Search, CheckCircle, Clock, CalendarDays, FileCheck, IndianRupee } from 'lucide-react';
 import { DataTable } from '@/components/common/DataTable';
 import { Button } from '@/components/common/Button';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { StatsCard } from '@/components/common/StatsCard';
 import { ConfirmModal } from '@/components/common/ConfirmModal';
-
-const DUMMY_QUOTATIONS = [
-  { id: 'QT-2026-001', customer: 'Ramesh Sharma', customerType: 'Retail', startDate: '2026-10-15', endDate: '2026-10-18', amount: 150000, status: 'Approved' },
-  { id: 'QT-2026-002', customer: 'Royal Weddings Agency', customerType: 'Corporate', startDate: '2026-11-20', endDate: '2026-11-22', amount: 450000, status: 'Draft' },
-  { id: 'QT-2026-003', customer: 'Fairmont Hotel', customerType: 'Corporate', startDate: '2026-12-05', endDate: '2026-12-06', amount: 85000, status: 'Sent' },
-  { id: 'QT-2026-004', customer: 'Sunita Verma', customerType: 'Retail', startDate: '2026-10-25', endDate: '2026-10-25', amount: 25000, status: 'Converted' },
-];
+import { quotationService, Quotation, QuotationStats } from '@/lib/services/quotation.services';
 
 export function QuotationsView() {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
-  const [data, setData] = useState<any[]>([]);
+  const [data, setData] = useState<Quotation[]>([]);
+  const [stats, setStats] = useState<QuotationStats>({ total: 0, draft: 0, sent: 0, approved: 0, converted: 0, rejected: 0, totalValue: 0 });
   const [activeTab, setActiveTab] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [quoteToDelete, setQuoteToDelete] = useState<string | null>(null);
   const tabs = ['ALL', 'DRAFT', 'SENT', 'APPROVED', 'CONVERTED'];
 
-  useEffect(() => {
-    // Simulate API fetch
-    setTimeout(() => {
-      setData(DUMMY_QUOTATIONS);
+  const fetchQuotations = useCallback(async () => {
+    try {
+      setLoading(true);
+      const statusFilter = activeTab !== 'ALL' ? activeTab.charAt(0) + activeTab.slice(1).toLowerCase() : undefined;
+      const response = await quotationService.getQuotations({
+        search: searchQuery || undefined,
+        status: statusFilter,
+      });
+      setData(response.data);
+      setStats(response.stats);
+    } catch (error) {
+      console.error('Error fetching quotations:', error);
+    } finally {
       setLoading(false);
-    }, 500);
-  }, []);
+    }
+  }, [activeTab, searchQuery]);
 
-  const confirmDelete = () => {
+  useEffect(() => {
+    fetchQuotations();
+  }, [fetchQuotations]);
+
+  const confirmDelete = async () => {
     if (quoteToDelete) {
-      setData(data.filter(q => q.id !== quoteToDelete));
+      try {
+        await quotationService.deleteQuotation(quoteToDelete);
+        await fetchQuotations();
+      } catch (error) {
+        console.error('Error deleting quotation:', error);
+      }
       setDeleteModalOpen(false);
       setQuoteToDelete(null);
     }
   };
 
-  const filteredData = data.filter(q => {
-    const matchesSearch = q.customer.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          q.id.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    let matchesTab = true;
-    if (activeTab !== 'ALL') {
-      matchesTab = q.status.toUpperCase() === activeTab;
-    }
-
-    return matchesSearch && matchesTab;
-  });
-
   const columns = [
     { 
-      header: 'Quotation ID', 
-      accessorKey: 'id', 
+      header: t('quotation.quotationId'), 
+      accessorKey: 'quotationId', 
       cell: (row: any) => (
         <span className="font-mono text-sm font-bold text-foreground">
-          {row.id}
+          {row.quotationId}
         </span>
       ) 
     },
     { 
-      header: 'Customer', 
+      header: t('quotation.customer'), 
       accessorKey: 'customer', 
       cell: (row: any) => (
         <div>
-          <p className="font-bold text-foreground">{row.customer}</p>
-          <span className="text-xs text-muted-foreground">{row.customerType}</span>
+          <p className="font-bold text-foreground">{row.customer?.name || '—'}</p>
+          <span className="text-xs text-muted-foreground">{row.customer?.type === 'Retail' ? t('crm.retail') : t('crm.corporate')}</span>
         </div>
       ) 
     },
     { 
-      header: 'Event Dates', 
+      header: t('quotation.dates'), 
       accessorKey: 'dates', 
       cell: (row: any) => (
         <div className="flex items-center gap-2 text-sm">
           <CalendarDays className="w-4 h-4 text-muted-foreground" />
-          <span>{row.startDate} to {row.endDate}</span>
+          <span>{new Date(row.eventStartDate).toLocaleDateString()} to {new Date(row.eventEndDate).toLocaleDateString()}</span>
         </div>
       ) 
     },
     { 
-      header: 'Amount (₹)', 
-      accessorKey: 'amount', 
+      header: t('quotation.amount'), 
+      accessorKey: 'grandTotal', 
       cell: (row: any) => (
         <span className="font-bold text-foreground">
-          ₹ {row.amount.toLocaleString()}
+          ₹ {(row.grandTotal || 0).toLocaleString()}
         </span>
       ) 
     },
-    { header: 'Status', accessorKey: 'status', cell: (row: any) => <StatusBadge status={row.status} /> },
+    { 
+      header: t('quotation.status'), 
+      accessorKey: 'status', 
+      cell: (row: any) => {
+        let statusKey = 'draft';
+        if (row.status === 'Sent') statusKey = 'sent';
+        if (row.status === 'Approved') statusKey = 'approved';
+        if (row.status === 'Converted') statusKey = 'converted';
+        if (row.status === 'Rejected') statusKey = 'rejected';
+        return <StatusBadge status={row.status} customText={t(`quotation.${statusKey}`)} />;
+      }
+    },
     {
-      header: 'Actions', accessorKey: 'actions', cell: (row: any) => (
+      header: t('quotation.actions'), 
+      accessorKey: 'actions', 
+      cell: (row: any) => (
         <div className="flex items-center justify-end gap-2">
-          <Link href={`/operations/quotations/${row.id}`}>
+          <Link href={`/operations/quotations/${row._id}`} title={t('quotation.viewQuotation')}>
             <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors">
               <Eye className="w-4 h-4" />
             </Button>
           </Link>
-          <Link href={`/operations/quotations/${row.id}/edit`}>
+          <Link href={`/operations/quotations/${row._id}/edit`} title={t('quotation.editQuotation')}>
             <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors" disabled={row.status === 'Converted'}>
               <Edit className="w-4 h-4" />
             </Button>
@@ -110,11 +126,12 @@ export function QuotationsView() {
             variant="ghost" 
             size="icon" 
             onClick={() => {
-              setQuoteToDelete(row.id);
+              setQuoteToDelete(row._id);
               setDeleteModalOpen(true);
             }}
             disabled={row.status === 'Converted'}
             className="h-8 w-8 text-muted-foreground hover:text-error hover:bg-error/10 transition-colors"
+            title={t('crm.delete')}
           >
             <Trash2 className="w-4 h-4" />
           </Button>
@@ -123,24 +140,24 @@ export function QuotationsView() {
     },
   ];
 
-  if (loading) return <div className="p-8 text-center text-muted-foreground animate-pulse">Loading...</div>;
+  if (loading) return <div className="p-8 text-center text-muted-foreground animate-pulse">{t('crm.loading', 'Loading...')}</div>;
 
   return (
     <div className="flex flex-col p-4 md:p-6 lg:p-8 w-full">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h2 className="text-3xl font-black text-foreground tracking-tight mb-1">Quotations</h2>
-          <p className="text-sm font-medium text-muted-foreground">Create and manage event estimates and proposals.</p>
+          <h2 className="text-3xl font-black text-foreground tracking-tight mb-1">{t('quotation.title')}</h2>
+          <p className="text-sm font-medium text-muted-foreground">{t('quotation.subtitle')}</p>
         </div>
         <div className="flex gap-3 w-full sm:w-auto">
           <Button variant="outline" className="flex-1 sm:flex-none flex items-center justify-center gap-2">
             <Download className="w-4 h-4" />
-            Export
+            {t('crm.download', 'Export')}
           </Button>
           <Link href="/operations/quotations/new" className="flex-1 sm:flex-none w-full sm:w-auto">
             <Button variant="primary" className="w-full flex items-center justify-center gap-2">
               <Plus className="w-4 h-4 shrink-0" />
-              <span className="truncate">Create Quotation</span>
+              <span className="truncate">{t('quotation.newQuotation')}</span>
             </Button>
           </Link>
         </div>
@@ -148,28 +165,28 @@ export function QuotationsView() {
 
       <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 shrink-0">
         <StatsCard
-          title="Total Quotations"
-          value={data.length}
+          title={t('quotation.title')}
+          value={stats.total}
           icon={FileText}
           colorTheme="primary"
         />
         <StatsCard
-          title="Pending Approval"
-          value={data.filter(q => q.status === 'Sent' || q.status === 'Draft').length}
+          title={t('crm.pending')}
+          value={stats.draft + stats.sent}
           icon={Clock}
-          colorTheme="secondary"
+          colorTheme="warning"
         />
         <StatsCard
-          title="Converted to Booking"
-          value={data.filter(q => q.status === 'Converted').length}
+          title={t('quotation.converted')}
+          value={stats.converted}
           icon={CheckCircle}
           colorTheme="success"
         />
         <StatsCard
-          title="Total Pipeline Value"
-          value={`₹ ${(data.reduce((acc, curr) => acc + curr.amount, 0) / 100000).toFixed(2)}L`}
+          title={t('quotation.grandTotal')}
+          value={`₹ ${(stats.totalValue / 100000).toFixed(2)}L`}
           icon={IndianRupee}
-          colorTheme="primary"
+          colorTheme="blue"
         />
       </div>
 
@@ -177,7 +194,7 @@ export function QuotationsView() {
         <div className="p-4 border-b border-border flex flex-col md:flex-row items-center justify-between gap-4 shrink-0">
           <div className="flex items-center gap-2 text-foreground font-bold text-lg whitespace-nowrap">
             <FileCheck className="w-5 h-5 text-primary" />
-            Quotations List
+            {t('quotation.quotationDetails')}
           </div>
           
           <div className="flex items-center bg-muted/50 p-1 rounded-lg overflow-x-auto w-full md:w-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
@@ -191,7 +208,11 @@ export function QuotationsView() {
                     : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                 }`}
               >
-                {tab}
+                {tab === 'ALL' ? t('quotation.allQuotations') : 
+                 tab === 'DRAFT' ? t('quotation.draft') :
+                 tab === 'SENT' ? t('quotation.sent') :
+                 tab === 'APPROVED' ? t('quotation.approved') :
+                 t('quotation.converted')}
               </button>
             ))}
           </div>
@@ -200,7 +221,7 @@ export function QuotationsView() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Search ID or customer..."
+              placeholder={t('quotation.searchQuotations')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-9 pr-4 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
@@ -211,7 +232,7 @@ export function QuotationsView() {
         <div className="flex-1 overflow-auto">
           <DataTable
             columns={columns}
-            data={filteredData}
+            data={data}
           />
         </div>
       </div>
@@ -220,9 +241,9 @@ export function QuotationsView() {
         isOpen={deleteModalOpen}
         onClose={() => setDeleteModalOpen(false)}
         onConfirm={confirmDelete}
-        title="Delete Quotation"
+        title={t('crm.delete')}
         message="Are you sure you want to delete this quotation? This action cannot be undone."
-        confirmText="Delete Quotation"
+        confirmText={t('crm.delete')}
       />
     </div>
   );

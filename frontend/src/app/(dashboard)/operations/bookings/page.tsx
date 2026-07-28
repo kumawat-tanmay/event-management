@@ -1,1 +1,11 @@
-export default function Placeholder() { return <div className='p-8 flex items-center justify-center h-screen text-muted-foreground'>Coming Soon...</div>; }
+import { BookingsView } from '@/components/dashboard/operations/bookings/BookingsView';
+
+export const metadata = {
+  title: 'Event Bookings | Krishna Events ERP',
+  description: 'Manage confirmed events and billing agreements',
+};
+
+export default function BookingsPage() {
+  return <BookingsView />;
+}
+

@@ -6,5 +6,5 @@ export const metadata = {
 };
 
 export default function EditItemPage() {
-  return <ItemForm />;
+  return <ItemForm isEditing={true} />;
 }

@@ -1,56 +1,140 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Search, Filter, ArrowRightLeft, Download, ArrowDownRight, ArrowUpRight, ListOrdered } from 'lucide-react';
+import useSWR from 'swr';
+import { Search, ArrowRightLeft, Download, ArrowDownRight, ArrowUpRight, ListOrdered, Loader2 } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { DataTable } from '@/components/common/DataTable';
 import { Button } from '@/components/common/Button';
-import { StatusBadge } from '@/components/common/StatusBadge';
 import { StatsCard } from '@/components/common/StatsCard';
-
-const DUMMY_LEDGER = [
-  { id: 'TXN-001', date: '24 May 2025, 10:30 AM', item: 'German Tent 20x40', type: 'OUT', qty: 2, reference: 'DIS-2025-208', warehouse: 'Main Hub', user: 'Rahul' },
-  { id: 'TXN-002', date: '24 May 2025, 09:15 AM', item: 'Banquet Chairs', type: 'IN', qty: 150, reference: 'RET-2025-109', warehouse: 'Main Hub', user: 'Amit' },
-  { id: 'TXN-003', date: '23 May 2025, 04:45 PM', item: 'Fairy Lights (100m)', type: 'OUT', qty: 5, reference: 'DIS-2025-207', warehouse: 'Sec-4 Godown', user: 'Rahul' },
-  { id: 'TXN-004', date: '23 May 2025, 02:20 PM', item: 'Sofa 3-Seater VIP', type: 'IN', qty: 4, reference: 'RET-2025-108', warehouse: 'Main Hub', user: 'Suresh' },
-  { id: 'TXN-005', date: '22 May 2025, 11:00 AM', item: 'JBL Speakers Set', type: 'OUT', qty: 1, reference: 'DIS-2025-206', warehouse: 'Tech Hub', user: 'Vikram' },
-];
+import { inventoryService, LedgerEntry } from '@/lib/services/inventory.services';
+import { useTranslation } from 'react-i18next';
 
 export function LedgerView() {
+  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
-  const [data] = useState(DUMMY_LEDGER);
   const [activeTab, setActiveTab] = useState('ALL TYPES');
   const tabs = ['ALL TYPES', 'STOCK IN', 'STOCK OUT'];
 
-  const filteredData = data.filter(item => {
-    const matchesSearch = item.item.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          item.reference.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          item.id.toLowerCase().includes(searchQuery.toLowerCase());
+  // Fetch all ledger movements
+  const { data: ledgerResponse, error, isLoading } = useSWR('ledger-list', () => 
+    inventoryService.getLedger({ limit: 100 })
+  );
+
+  const movements = ledgerResponse?.data || [];
+
+  const filteredData = movements.filter(item => {
+    const itemName = typeof item.item === 'object' && item.item !== null ? item.item.name : '';
+    const refCode = item.reference || '';
+    const transId = item._id || '';
+
+    const matchesSearch = itemName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          refCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          transId.toLowerCase().includes(searchQuery.toLowerCase());
+
     const matchesTab = activeTab === 'ALL TYPES' || 
-                       (activeTab === 'STOCK IN' && item.type === 'IN') || 
-                       (activeTab === 'STOCK OUT' && item.type === 'OUT');
+                       (activeTab === 'STOCK IN' && ['STOCK_IN', 'OPENING_STOCK', 'REPAIRED', 'TRANSFER_IN', 'RELEASED'].includes(item.type)) || 
+                       (activeTab === 'STOCK OUT' && ['STOCK_OUT', 'DAMAGED', 'SCRAPPED', 'TRANSFER_OUT', 'RESERVED'].includes(item.type));
+
     return matchesSearch && matchesTab;
   });
 
   const columns = [
-    { header: 'Transaction ID', accessorKey: 'id', cell: (row: any) => <span className="font-semibold text-muted-foreground">{row.id}</span> },
-    { header: 'Date & Time', accessorKey: 'date', cell: (row: any) => <span className="text-sm">{row.date}</span> },
-    { header: 'Item', accessorKey: 'item', cell: (row: any) => <span className="font-semibold text-primary">{row.item}</span> },
-    { header: 'Type', accessorKey: 'type', cell: (row: any) => (
-        <span className={`inline-flex items-center gap-1 font-bold text-[11px] px-2 py-1 rounded border ${
-          row.type === 'IN' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 
-          'bg-blue-500/10 text-blue-500 border-blue-500/20'
-        }`}>
-          {row.type === 'IN' ? <ArrowDownRight className="w-3 h-3" /> : <ArrowUpRight className="w-3 h-3" />}
-          {row.type}
-        </span>
-      )
+    { 
+      header: t('ledger.transactionId', 'Transaction ID'), 
+      accessorKey: '_id', 
+      cell: (row: LedgerEntry) => <span className="font-mono text-xs text-muted-foreground">{row._id.slice(-8).toUpperCase()}</span> 
     },
-    { header: 'Qty', accessorKey: 'qty', cell: (row: any) => <span className="font-semibold">{row.type === 'OUT' ? '-' : '+'}{row.qty}</span> },
-    { header: 'Reference', accessorKey: 'reference', cell: (row: any) => <span className="font-medium cursor-pointer hover:underline text-foreground">{row.reference}</span> },
-    { header: 'Warehouse', accessorKey: 'warehouse', cell: (row: any) => <span className="text-muted-foreground">{row.warehouse}</span> },
-    { header: 'User', accessorKey: 'user', cell: (row: any) => <span>{row.user}</span> },
+    { 
+      header: t('ledger.dateTime', 'Date & Time'), 
+      accessorKey: 'createdAt', 
+      cell: (row: LedgerEntry) => <span className="text-sm">{new Date(row.createdAt).toLocaleString()}</span> 
+    },
+    { 
+      header: t('ledger.item', 'Item'), 
+      accessorKey: 'item', 
+      cell: (row: LedgerEntry) => (
+        <span className="font-semibold text-primary">
+          {typeof row.item === 'object' && row.item !== null ? row.item.name : '—'}
+        </span>
+      ) 
+    },
+    { 
+      header: t('ledger.type', 'Type'), 
+      accessorKey: 'type', 
+      cell: (row: LedgerEntry) => {
+        let isAddition = false;
+        if (row.type === 'ADJUSTMENT') {
+          isAddition = row.balanceAfter > row.balanceBefore;
+        } else {
+          isAddition = ['STOCK_IN', 'OPENING_STOCK', 'REPAIRED', 'TRANSFER_IN', 'RELEASED'].includes(row.type);
+        }
+        return (
+          <span className={`inline-flex items-center gap-1 font-bold text-[11px] px-2 py-1 rounded border uppercase ${
+            isAddition ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 
+            'bg-red-500/10 text-red-500 border-red-500/20'
+          }`}>
+            {isAddition ? <ArrowDownRight className="w-3 h-3" /> : <ArrowUpRight className="w-3 h-3" />}
+            {row.type.replace('_', ' ')}
+          </span>
+        );
+      }
+    },
+    { 
+      header: t('ledger.qty', 'Qty'), 
+      accessorKey: 'quantity', 
+      cell: (row: LedgerEntry) => {
+        let isAddition = false;
+        if (row.type === 'ADJUSTMENT') {
+          isAddition = row.balanceAfter > row.balanceBefore;
+        } else {
+          isAddition = ['STOCK_IN', 'OPENING_STOCK', 'REPAIRED', 'TRANSFER_IN', 'RELEASED'].includes(row.type);
+        }
+        return (
+          <span className={isAddition ? "text-emerald-600 font-bold" : "text-red-500 font-bold"}>
+            {isAddition ? '+' : '-'}{row.quantity}
+          </span>
+        );
+      }
+    },
+    { 
+      header: t('ledger.reference', 'Reference'), 
+      accessorKey: 'reference', 
+      cell: (row: LedgerEntry) => <span className="font-semibold text-foreground">{row.reference || '—'}</span> 
+    },
+    { 
+      header: t('ledger.warehouse', 'Warehouse'), 
+      accessorKey: 'warehouse', 
+      cell: (row: LedgerEntry) => <span className="text-muted-foreground">{typeof row.warehouse === 'object' && row.warehouse !== null ? row.warehouse.name : '—'}</span> 
+    },
+    { 
+      header: t('ledger.user', 'User'), 
+      accessorKey: 'performedBy', 
+      cell: (row: LedgerEntry) => <span>{typeof row.performedBy === 'object' && row.performedBy !== null ? row.performedBy.name : '—'}</span> 
+    },
   ];
+
+  if (isLoading) {
+    return (
+      <div className="flex h-[400px] items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6 text-center text-error">
+        {t('roles.failedLoad', 'Failed to load ledger logs.')}
+      </div>
+    );
+  }
+
+  // Calculate stats
+  const totalCount = movements.length;
+  const stockInCount = movements.filter(m => ['STOCK_IN', 'OPENING_STOCK', 'REPAIRED'].includes(m.type)).length;
+  const stockOutCount = movements.filter(m => ['STOCK_OUT', 'DAMAGED', 'SCRAPPED'].includes(m.type)).length;
+  const adjustmentsCount = movements.filter(m => ['ADJUSTMENT', 'TRANSFER_IN', 'TRANSFER_OUT'].includes(m.type)).length;
 
   return (
     <div className="flex flex-col p-4 md:p-6 lg:p-8 w-full gap-8">
@@ -59,47 +143,40 @@ export function LedgerView() {
         <div>
           <h1 className="text-3xl font-black tracking-tight text-foreground flex items-center gap-3">
             <ArrowRightLeft className="w-8 h-8 text-primary" />
-            Inventory Ledger
+            {t('ledger.title')}
           </h1>
-          <p className="text-muted-foreground mt-1 text-sm font-medium">Track all stock movements, dispatches, and returns</p>
-        </div>
-        
-        <div className="flex items-center gap-3">
-          <Button variant="outline" className="flex items-center gap-2">
-            <Download className="w-4 h-4 shrink-0" />
-            <span className="truncate">Export Log</span>
-          </Button>
+          <p className="text-muted-foreground mt-1 text-sm font-medium">{t('ledger.subtitle')}</p>
         </div>
       </div>
 
       {/* KPI Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 shrink-0">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 shrink-0">
         <StatsCard
-          title="Total Transactions"
-          value="1,248"
+          title={t('ledger.totalTransactions')}
+          value={totalCount}
           icon={ArrowRightLeft}
-          subtitle="This Month"
+          subtitle="All transactions log"
           colorTheme="primary"
         />
         <StatsCard
-          title="Stock In"
-          value="+420"
+          title={t('ledger.stockIn')}
+          value={stockInCount}
           icon={ArrowDownRight}
-          subtitle="Returns/Purchases"
+          subtitle="Receipts / returns"
           colorTheme="success"
         />
         <StatsCard
-          title="Stock Out"
-          value="-512"
+          title={t('ledger.stockOut')}
+          value={stockOutCount}
           icon={ArrowUpRight}
-          subtitle="Dispatched"
+          subtitle="Dispatches / losses"
           colorTheme="blue"
         />
         <StatsCard
-          title="Lost/Damaged"
-          value="12"
-          icon={Filter}
-          subtitle="Action Needed"
+          title={t('ledger.internalTransfers')}
+          value={adjustmentsCount}
+          icon={ListOrdered}
+          subtitle="Inter-warehouse"
           colorTheme="warning"
         />
       </div>
@@ -113,7 +190,7 @@ export function LedgerView() {
             <div className="flex flex-col lg:flex-row justify-between lg:items-center gap-4 mb-2">
               <div className="flex items-center gap-2 w-full lg:w-1/3">
                 <ListOrdered className="w-5 h-5 text-primary" />
-                <h3 className="text-lg font-bold text-foreground">Stock Ledger Log</h3>
+                <h3 className="text-lg font-bold text-foreground">{t('ledger.listTitle')}</h3>
               </div>
               
               <div className="flex items-center justify-center w-full lg:w-1/3">
@@ -129,7 +206,7 @@ export function LedgerView() {
                           : "text-muted-foreground hover:text-foreground hover:bg-card"
                       )}
                     >
-                      {tab}
+                      {tab === 'ALL TYPES' ? t('ledger.allTypes') : tab === 'STOCK IN' ? t('ledger.stockIn') : t('ledger.stockOut')}
                     </button>
                   ))}
                 </div>
@@ -140,7 +217,7 @@ export function LedgerView() {
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <input 
                     type="text" 
-                    placeholder="Search by Item, Ref or ID..." 
+                    placeholder={t('ledger.searchPlace')} 
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full pl-9 pr-4 py-2 text-sm bg-background border border-input rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 transition-shadow"

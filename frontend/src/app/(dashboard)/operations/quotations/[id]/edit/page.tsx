@@ -1,4 +1,4 @@
-import { QuotationForm } from '@/components/dashboard/operations/quotations/QuotationForm';
+import { OperationForm } from '@/components/dashboard/operations/quotations/OperationForm';
 
 export const metadata = {
   title: 'Edit Quotation | Krishna Events ERP',
@@ -6,5 +6,5 @@ export const metadata = {
 };
 
 export default function EditQuotationPage() {
-  return <QuotationForm />;
+  return <OperationForm mode="quotation" isEdit />;
 }

@@ -13,12 +13,12 @@ export function StatusBadge({ status, customText, className, ...props }: StatusB
   let variant: 'success' | 'warning' | 'error' | 'info' | 'default' = 'default'
   
   if (lowerStatus.includes('inactive')) {
-    variant = 'warning'
-  } else if (['approved', 'completed', 'active', 'received', 'delivered', 'paid', 'success', 'stable'].some(w => lowerStatus.includes(w))) {
+    variant = 'default'
+  } else if (['approved', 'completed', 'active', 'available', 'received', 'delivered', 'paid', 'success', 'stable'].some(w => lowerStatus.includes(w))) {
     variant = 'success'
   } else if (['pending', 'processing', 'ongoing', 'warning', 'needs action', 'action needed', 'maintenance'].some(w => lowerStatus.includes(w))) {
     variant = 'warning'
-  } else if (['cancelled', 'failed', 'error', 'rejected', 'overdue', 'critical'].some(w => lowerStatus.includes(w))) {
+  } else if (['cancelled', 'failed', 'error', 'rejected', 'overdue', 'critical', 'low stock'].some(w => lowerStatus.includes(w))) {
     variant = 'error'
   } else if (['shipped', 'dispatched', 'info', 'draft', 'on track'].some(w => lowerStatus.includes(w))) {
     variant = 'info'

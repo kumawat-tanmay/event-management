@@ -7,7 +7,8 @@ import { authService } from '@/lib/services/auth.services';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
 import toast from 'react-hot-toast';
-import { resetPasswordSchema } from '@/utils/validations';
+import { getResetPasswordSchema } from '@/utils/validations';
+import { useTranslation } from 'react-i18next';
 import {
   Lock,
   LockKeyhole,
@@ -20,6 +21,7 @@ import {
 } from 'lucide-react';
 
 export default function ResetPasswordForm() {
+  const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
@@ -34,8 +36,8 @@ export default function ResetPasswordForm() {
 
   // ─── Client-side validation ────────────────────────────
   const validate = () => {
-    if (!token) return 'Reset token is missing. Please request a new link.';
-    const result = resetPasswordSchema.safeParse({ newPassword, confirmPassword });
+    if (!token) return t('auth.invalidResetLink', 'Reset token is missing. Please request a new link.');
+    const result = getResetPasswordSchema(t).safeParse({ newPassword, confirmPassword });
     if (!result.success) {
       return result.error.issues[0]?.message || 'Invalid password input.';
     }
@@ -54,21 +56,21 @@ export default function ResetPasswordForm() {
     setIsLoading(true);
     setError('');
 
-    const toastId = toast.loading('Resetting your password...');
+    const toastId = toast.loading(t('auth.resettingPassword', 'Resetting your password...'));
 
     try {
       const response = await authService.resetPassword(newPassword, token!);
       if (response.success) {
-        toast.success('Password reset successfully!', { id: toastId });
+        toast.success(t('auth.passwordResetSuccessMsg', 'Password reset successfully!'), { id: toastId });
         setSuccess(true);
         setTimeout(() => router.push('/login'), 2500);
       } else {
-        const msg = response.message || 'Failed to reset password.';
+        const msg = response.message || t('auth.resetFail', 'Failed to reset password.');
         setError(msg);
         toast.error(msg, { id: toastId });
       }
     } catch (err: any) {
-      const msg = err.response?.data?.message || 'Failed to reset password. The link may have expired.';
+      const msg = err.response?.data?.message || t('auth.resetFailLink', 'Failed to reset password. The link may have expired.');
       setError(msg);
       toast.error(msg, { id: toastId });
     } finally {
@@ -86,11 +88,11 @@ export default function ResetPasswordForm() {
           </div>
         </div>
         <div>
-          <h3 className="text-lg font-bold text-foreground mb-2">Password Reset!</h3>
+          <h3 className="text-lg font-bold text-foreground mb-2">{t('auth.passwordReset', 'Password Reset!')}</h3>
           <p className="text-sm text-muted-foreground">
-            Your password has been updated successfully.
+            {t('auth.passwordResetSuccess', 'Your password has been updated successfully.')}
             <br />
-            Redirecting to login...
+            {t('auth.redirectingToLogin', 'Redirecting to login...')}
           </p>
         </div>
         <Link
@@ -98,7 +100,7 @@ export default function ResetPasswordForm() {
           className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline"
         >
           <ArrowLeft className="w-4 h-4" />
-          Go to Login
+          {t('auth.goToLogin', 'Go to Login')}
         </Link>
       </div>
     );
@@ -110,7 +112,7 @@ export default function ResetPasswordForm() {
       <div className="space-y-6 text-center">
         <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-xl">
           <p className="text-sm text-destructive font-medium">
-            Invalid or missing reset link. Please request a new password reset.
+            {t('auth.invalidResetLink', 'Invalid or missing reset link. Please request a new password reset.')}
           </p>
         </div>
         <Link
@@ -118,7 +120,7 @@ export default function ResetPasswordForm() {
           className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline"
         >
           <ArrowLeft className="w-4 h-4" />
-          Request New Reset Link
+          {t('auth.requestNewResetLink', 'Request New Reset Link')}
         </Link>
       </div>
     );
@@ -137,7 +139,7 @@ export default function ResetPasswordForm() {
       {/* New Password */}
       <div className="space-y-1.5">
         <label htmlFor="newPassword" className="text-sm font-medium text-foreground">
-          New Password
+          {t('auth.newPassword', 'New Password')}
         </label>
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted-foreground">
@@ -164,14 +166,14 @@ export default function ResetPasswordForm() {
           </button>
         </div>
         <p className="text-xs text-muted-foreground px-1">
-          Min 8 chars, 1 uppercase, 1 lowercase, 1 number
+          {t('auth.passwordRequirements', 'Min 8 chars, 1 uppercase, 1 lowercase, 1 number')}
         </p>
       </div>
 
       {/* Confirm Password */}
       <div className="space-y-1.5">
         <label htmlFor="confirmPassword" className="text-sm font-medium text-foreground">
-          Confirm Password
+          {t('auth.confirmPassword', 'Confirm Password')}
         </label>
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted-foreground">
@@ -207,12 +209,12 @@ export default function ResetPasswordForm() {
         {isLoading ? (
           <>
             <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-            Resetting...
+            {t('auth.resetting', 'Resetting...')}
           </>
         ) : (
           <>
             <Key className="mr-2 h-5 w-5" />
-            Reset Password
+            {t('auth.resetPasswordTitle', 'Reset Password')}
           </>
         )}
       </Button>
@@ -223,7 +225,7 @@ export default function ResetPasswordForm() {
           className="inline-flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-primary transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
-          Back to Login
+          {t('auth.backToLogin', 'Back to Login')}
         </Link>
       </div>
     </form>

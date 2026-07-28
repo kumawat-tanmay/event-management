@@ -10,11 +10,13 @@ import { useAuth } from '@/hooks/useAuth';
 import { useGoogleLogin } from '@react-oauth/google';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
-import { loginSchema } from '@/utils/validations';
+import { getLoginSchema } from '@/utils/validations';
+import { useTranslation } from 'react-i18next';
 
 export default function LoginForm() {
   const router = useRouter();
   const { login } = useAuth();
+  const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const searchParams = useSearchParams();
@@ -29,7 +31,7 @@ export default function LoginForm() {
     setIsLoading(true);
     setError('');
 
-    const validation = loginSchema.safeParse({ email, password });
+    const validation = getLoginSchema(t).safeParse({ email, password });
     if (!validation.success) {
       const msg = validation.error.issues[0]?.message || 'Invalid email or password.';
       setError(msg);
@@ -37,14 +39,14 @@ export default function LoginForm() {
       return;
     }
 
-    const toastId = toast.loading('Signing in...');
+    const toastId = toast.loading(t('auth.loggingIn'));
 
     try {
       const response = await authService.login(email.trim().toLowerCase(), password);
 
       if (response.success) {
         login(response.data, response.data.token);
-        toast.success('Welcome back!', { id: toastId });
+        toast.success(t('auth.signInSuccess', 'Welcome back!'), { id: toastId });
         router.push('/');
       } else {
         const msg = response.message || 'Invalid email or password.';
@@ -70,12 +72,12 @@ export default function LoginForm() {
     onSuccess: async (tokenResponse) => {
       if (!tokenResponse.access_token) return;
       setIsGoogleLoading(true);
-      const toastId = toast.loading('Verifying Google account...');
+      const toastId = toast.loading(t('auth.verifyingGoogle', 'Verifying Google account...'));
       try {
         const response = await authService.googleLogin(tokenResponse.access_token);
         if (response.success) {
           login(response.data, response.data.token);
-          toast.success('Welcome back!', { id: toastId });
+          toast.success(t('auth.signInSuccess', 'Welcome back!'), { id: toastId });
           router.push('/');
         } else {
           toast.error(response.message || 'Google login failed', { id: toastId });
@@ -115,14 +117,14 @@ export default function LoginForm() {
             <path d="M12 5.38c1.62 0 3.06.56 4.21 1.66l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 3.16-4.53z" fill="#EA4335" />
           </svg>
         )}
-        {isGoogleLoading ? 'Connecting...' : 'Continue with Google'}
+        {isGoogleLoading ? t('auth.connecting', 'Connecting...') : t('auth.signInGoogle')}
       </button>
-
+ 
       {/* ── Divider ── */}
       <div className="relative flex items-center">
         <div className="flex-grow border-t border-border"></div>
         <span className="flex-shrink mx-4 text-[11px] font-bold text-muted-foreground uppercase tracking-widest">
-          or with email
+          {t('auth.orWithEmail', 'or with email')}
         </span>
         <div className="flex-grow border-t border-border"></div>
       </div>
@@ -133,7 +135,7 @@ export default function LoginForm() {
         {/* Email */}
         <div className="space-y-1.5">
           <label htmlFor="email" className="text-sm font-medium text-foreground">
-            Email Address
+            {t('auth.email')}
           </label>
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted-foreground">
@@ -142,7 +144,7 @@ export default function LoginForm() {
             <Input
               id="email"
               type="email"
-              placeholder="admin@kt.com"
+              placeholder={t('auth.emailPlaceholder', 'Enter your email address')}
               className="pl-10 h-12"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -152,18 +154,18 @@ export default function LoginForm() {
             />
           </div>
         </div>
-
+ 
         {/* Password */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <label htmlFor="password" className="text-sm font-medium text-foreground">
-              Password
+              {t('auth.password')}
             </label>
             <Link
               href="/forgot-password"
               className="text-sm font-semibold text-primary hover:underline"
             >
-              Forgot Password?
+              {t('auth.forgotPassword')}
             </Link>
           </div>
           <div className="relative">
@@ -173,7 +175,7 @@ export default function LoginForm() {
             <Input
               id="password"
               type={showPassword ? 'text' : 'password'}
-              placeholder="••••••••"
+              placeholder={t('auth.passwordPlaceholder', 'Enter your password')}
               className="pl-10 pr-10 h-12"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -200,7 +202,7 @@ export default function LoginForm() {
             className="h-4 w-4 rounded border-input bg-transparent text-primary focus:ring-primary"
           />
           <label htmlFor="remember" className="text-sm text-muted-foreground">
-            Remember me for 30 days
+            {t('auth.rememberMe')}
           </label>
         </div>
 
@@ -213,11 +215,11 @@ export default function LoginForm() {
           {isLoading ? (
             <>
               <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-              Signing in...
+              {t('auth.loggingIn')}
             </>
           ) : (
             <>
-              Sign In
+              {t('auth.signIn')}
               <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
             </>
           )}

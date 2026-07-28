@@ -22,6 +22,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { getBackendHostUrl } from '@/lib/apiClient';
+import { useTranslation } from 'react-i18next';
 
 function getInitials(name?: string): string {
   if (!name) return 'U';
@@ -41,6 +42,7 @@ export function TopNavBar({ onMenuClick }: TopNavBarProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const { t, i18n } = useTranslation();
 
   const { user, logout } = useAuth();
 
@@ -79,7 +81,7 @@ export function TopNavBar({ onMenuClick }: TopNavBarProps) {
     : (typeof userRoleRaw === 'string' ? userRoleRaw : 'User');
 
   return (
-    <header className="h-[72px] bg-card border-b border-border flex items-center justify-between px-4 md:px-6 sticky top-0 z-40">
+    <header className="h-[72px] bg-card border-b border-border flex items-center justify-between px-4 md:px-6 sticky top-0 z-40 print:hidden">
       {/* Left: Mobile Toggle */}
       <div className="flex items-center gap-3 flex-1">
         <button
@@ -166,7 +168,7 @@ export function TopNavBar({ onMenuClick }: TopNavBarProps) {
 
                   <span className="relative z-10 flex items-center gap-2">
                     <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform duration-300" />
-                    <span>New Booking</span>
+                    <span>{t('navbar.newBooking')}</span>
                   </span>
                 </button>
               </Link>
@@ -176,7 +178,7 @@ export function TopNavBar({ onMenuClick }: TopNavBarProps) {
           <Link href="/dispatches" className="ml-1 sm:ml-2">
             <button className="flex items-center bg-card hover:bg-muted border border-border text-foreground px-2 py-2 sm:px-4 sm:py-2.5 rounded-lg sm:rounded-xl text-xs font-semibold sm:font-medium transition-colors shadow-sm h-full">
               <Truck size={16} className="sm:mr-1.5" />
-              <span className="hidden sm:inline">Dispatch</span>
+              <span className="hidden sm:inline">{t('navbar.dispatch')}</span>
             </button>
           </Link>
         </div>
@@ -195,10 +197,24 @@ export function TopNavBar({ onMenuClick }: TopNavBarProps) {
           <button
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
             className="p-2 text-muted-foreground hover:text-foreground transition-colors rounded-full hover:bg-muted"
+            title={t('navbar.toggleTheme')}
           >
             {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
           </button>
         )}
+
+        <button
+          onClick={() => {
+            const nextLang = i18n.language === 'hi' ? 'en' : 'hi';
+            i18n.changeLanguage(nextLang);
+          }}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-black uppercase tracking-widest rounded-xl transition-all border border-border bg-muted/30 hover:bg-muted text-muted-foreground hover:text-foreground mr-1"
+          title={t('navbar.selectLanguage')}
+        >
+          <span className={cn(i18n.language === 'en' ? 'text-primary font-extrabold' : 'text-muted-foreground')}>EN</span>
+          <span className="text-muted-foreground/30 font-light">|</span>
+          <span className={cn(i18n.language === 'hi' ? 'text-primary font-extrabold' : 'text-muted-foreground')}>हिंदी</span>
+        </button>
 
         <button className="relative p-2 text-muted-foreground hover:bg-muted hover:text-foreground rounded-full transition-colors cursor-pointer">
           <Bell className="w-5 h-5" />
@@ -243,7 +259,7 @@ export function TopNavBar({ onMenuClick }: TopNavBarProps) {
                 className="absolute right-0 mt-3 w-60 bg-card/95 backdrop-blur-xl border border-border rounded-2xl shadow-2xl py-2 overflow-hidden z-50 shadow-primary/10"
               >
                 <div className="px-4 py-3 border-b border-border/50 mb-1">
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Signed in as</p>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{t('navbar.signedInAs')}</p>
                   <p className="text-sm font-bold text-foreground truncate mt-0.5">{user?.email || 'N/A'}</p>
                 </div>
 
@@ -256,7 +272,7 @@ export function TopNavBar({ onMenuClick }: TopNavBarProps) {
                     <div className="p-1.5 rounded-lg bg-muted text-muted-foreground group-hover/item:bg-primary/20 group-hover/item:text-primary transition-colors">
                       <User size={16} />
                     </div>
-                    My Profile
+                    {t('navbar.myProfile')}
                   </Link>
 
                   <Link
@@ -267,7 +283,7 @@ export function TopNavBar({ onMenuClick }: TopNavBarProps) {
                     <div className="p-1.5 rounded-lg bg-muted text-muted-foreground group-hover/item:bg-primary/20 group-hover/item:text-primary transition-colors">
                       <Settings size={16} />
                     </div>
-                    Settings
+                    {t('navbar.settings')}
                   </Link>
                 </div>
 
@@ -279,7 +295,7 @@ export function TopNavBar({ onMenuClick }: TopNavBarProps) {
                     <div className="p-1.5 rounded-lg bg-[#ba292e]/10 text-[#ba292e]">
                       <LogOut size={16} />
                     </div>
-                    Sign Out
+                    {t('navbar.signOut')}
                   </button>
                 </div>
               </motion.div>

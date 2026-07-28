@@ -7,9 +7,11 @@ import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
 import { authService } from '@/lib/services/auth.services';
 import toast from 'react-hot-toast';
-import { emailSchema } from '@/utils/validations';
+import { getEmailSchema } from '@/utils/validations';
+import { useTranslation } from 'react-i18next';
 
 export default function ForgotPasswordForm() {
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -20,9 +22,9 @@ export default function ForgotPasswordForm() {
     setIsLoading(true);
     setError('');
 
-    const validation = emailSchema.safeParse(email);
+    const validation = getEmailSchema(t).safeParse(email);
     if (!validation.success) {
-      const msg = validation.error.issues[0]?.message || 'Please enter a valid email address';
+      const msg = validation.error.issues[0]?.message || t('auth.invalidEmail', 'Please enter a valid email address');
       setError(msg);
       setIsLoading(false);
       return;
@@ -30,19 +32,19 @@ export default function ForgotPasswordForm() {
 
     const normalizedEmail = validation.data;
 
-    const toastId = toast.loading('Sending reset link...');
+    const toastId = toast.loading(t('auth.sendingResetLink', 'Sending reset link...'));
     try {
       const response = await authService.forgotPassword(normalizedEmail);
       if (response.success) {
-        toast.success('Reset link sent! Check your email.', { id: toastId });
+        toast.success(t('auth.resetLinkSent', 'Reset link sent! Check your email.'), { id: toastId });
         setSuccess(true);
       } else {
-        const msg = response.message || 'Failed to send reset link.';
+        const msg = response.message || t('auth.forgotFail', 'Failed to send reset link.');
         setError(msg);
         toast.error(msg, { id: toastId });
       }
     } catch (err: any) {
-      const msg = err.response?.data?.message || 'Failed to send reset link. Please try again.';
+      const msg = err.response?.data?.message || t('auth.forgotFail', 'Failed to send reset link. Please try again.');
       setError(msg);
       toast.error(msg, { id: toastId });
     } finally {
@@ -60,22 +62,21 @@ export default function ForgotPasswordForm() {
           </div>
         </div>
         <div>
-          <h3 className="text-lg font-bold text-foreground mb-2">Check your email</h3>
+          <h3 className="text-lg font-bold text-foreground mb-2">{t('auth.checkEmail', 'Check your email')}</h3>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            We've sent a password reset link to{' '}
-            <span className="font-semibold text-foreground">{email}</span>.
+            {t('auth.resetSent', "We've sent a password reset link to {{email}}.", { email })}
             <br />
-            Please check your inbox and spam folder.
+            {t('auth.checkInbox', 'Please check your inbox and spam folder.')}
           </p>
         </div>
         <div className="p-4 bg-primary/5 border border-primary/10 rounded-xl text-left">
           <p className="text-xs text-muted-foreground">
-            Didn't receive an email?{' '}
+            {t('auth.didNotReceive', "Didn't receive an email?")}{' '}
             <button
               onClick={() => setSuccess(false)}
               className="text-primary font-semibold hover:underline"
             >
-              Try again
+              {t('auth.tryAgain', 'Try again')}
             </button>
           </p>
         </div>
@@ -84,7 +85,7 @@ export default function ForgotPasswordForm() {
           className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline"
         >
           <ArrowLeft className="w-4 h-4" />
-          Back to Login
+          {t('auth.backToLogin', 'Back to Login')}
         </Link>
       </div>
     );
@@ -101,7 +102,7 @@ export default function ForgotPasswordForm() {
 
       <div className="space-y-1.5">
         <label htmlFor="email" className="text-sm font-medium text-foreground">
-          Email Address
+          {t('auth.email', 'Email Address')}
         </label>
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted-foreground">
@@ -110,7 +111,7 @@ export default function ForgotPasswordForm() {
           <Input
             id="email"
             type="email"
-            placeholder="Enter your registered email"
+            placeholder={t('auth.enterRegisteredEmail', 'Enter your registered email')}
             className="pl-10 h-12"
             value={email}
             onChange={(e) => {
@@ -123,7 +124,7 @@ export default function ForgotPasswordForm() {
           />
         </div>
         <p className="text-xs text-muted-foreground px-1">
-          We'll send a password reset link to this email.
+          {t('auth.forgotPasswordSub', "We'll send a password reset link to this email.")}
         </p>
       </div>
 
@@ -135,11 +136,11 @@ export default function ForgotPasswordForm() {
         {isLoading ? (
           <>
             <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-            Sending...
+            {t('auth.sending', 'Sending...')}
           </>
         ) : (
           <>
-            Send Reset Link
+            {t('auth.sendResetLink', 'Send Reset Link')}
             <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
           </>
         )}
@@ -151,7 +152,7 @@ export default function ForgotPasswordForm() {
           className="inline-flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-primary transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
-          Back to Login
+          {t('auth.backToLogin', 'Back to Login')}
         </Link>
       </div>
     </form>

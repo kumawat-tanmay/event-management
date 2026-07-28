@@ -1,10 +1,5 @@
-import { CategoriesView } from '@/components/dashboard/inventory/categories/CategoriesView';
+import { redirect } from 'next/navigation';
 
-export const metadata = {
-  title: 'Categories | Krishna Events ERP',
-  description: 'Manage inventory categories',
-};
-
-export default function CategoriesPage() {
-  return <CategoriesView />;
+export default function RedirectPage() {
+  redirect('/inventory/items');
 }

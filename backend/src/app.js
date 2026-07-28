@@ -9,27 +9,9 @@ const crypto = require('crypto');
 const { errorHandler, notFound } = require('./middlewares/errorHandler');
 
 const app = express();
-app.disable('etag');
 
 // 1. Trust Proxy (Important for Rate Limiting behind Load Balancers)
 app.set('trust proxy', 1);
-
-// 1.5 Vercel Serverless Database Connection Middleware
-app.use(async (req, res, next) => {
-  if (process.env.VERCEL) {
-    const mongoose = require('mongoose');
-    if (mongoose.connection.readyState !== 1) {
-      try {
-        const connectDB = require('./config/db');
-        await connectDB();
-      } catch (err) {
-        console.error('❌ DB Connection failed on Vercel:', err.message);
-        return res.status(500).json({ success: false, message: 'Database Connection Error' });
-      }
-    }
-  }
-  next();
-});
 
 // 2. CORS config
 const allowedOrigins = [
@@ -40,7 +22,7 @@ const allowedOrigins = [
 const corsOptions = {
   origin: function (origin, callback) {
     if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
+    if (allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
     callback(new Error('Not allowed by CORS'));
@@ -55,7 +37,7 @@ app.use(compression());
 // 4. Rate Limiting (Traffic Control)
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: process.env.NODE_ENV === 'development' ? 10000 : 100,
+  max: process.env.NODE_ENV === 'production' ? 100 : 10000,
   message: {
     success: false,
     statusCode: 429,

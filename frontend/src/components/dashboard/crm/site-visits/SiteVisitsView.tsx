@@ -2,115 +2,126 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Plus, Download, MapPin, Eye, Edit, Trash2, Search, Filter, Calendar, Users, CheckCircle, Clock } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { Plus, MapPin, Eye, Edit, Trash2, Search, Calendar, Users, RefreshCw } from 'lucide-react';
 import { DataTable } from '@/components/common/DataTable';
 import { Button } from '@/components/common/Button';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { StatsCard } from '@/components/common/StatsCard';
 import { ConfirmModal } from '@/components/common/ConfirmModal';
-
-const DUMMY_VISITS = [
-  { id: 'SV-1001', leadId: 'LD-1002', venue: 'Shiv Vilas, Jaipur', customerName: 'Anjali Sharma', date: '15 Jul 2026', time: '11:00 AM', supervisor: 'Amit', status: 'Pending' },
-  { id: 'SV-1002', leadId: 'LD-1005', venue: 'Fairmont Hotel', customerName: 'TechCorp Pvt Ltd', date: '14 Jul 2026', time: '02:30 PM', supervisor: 'Ravi', status: 'Completed' },
-  { id: 'SV-1003', leadId: 'LD-1008', venue: 'Rambagh Palace', customerName: 'Vikram Singh', date: '16 Jul 2026', time: '10:00 AM', supervisor: 'Suresh', status: 'Pending' },
-];
+import { crmService, SiteVisit } from '@/lib/services/crm.services';
 
 export function SiteVisitsView() {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
-  const [data, setData] = useState<any[]>([]);
+  const [data, setData] = useState<SiteVisit[]>([]);
   const [activeTab, setActiveTab] = useState('ALL VISITS');
   const [searchQuery, setSearchQuery] = useState('');
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [visitToDelete, setVisitToDelete] = useState<string | null>(null);
   
-  const tabs = ['ALL VISITS', 'PENDING', 'COMPLETED', 'CANCELLED'];
+  const tabs = ['ALL VISITS', 'SCHEDULED', 'COMPLETED', 'CANCELLED'];
+
+  const fetchSiteVisits = async () => {
+    setLoading(true);
+    try {
+      const visits = await crmService.getSiteVisits();
+      setData(visits || []);
+    } catch (err) {
+      console.error('Error loading site visits:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    // Simulate API fetch
-    setTimeout(() => {
-      setData(DUMMY_VISITS);
-      setLoading(false);
-    }, 500);
+    fetchSiteVisits();
   }, []);
 
   const confirmDelete = () => {
     if (visitToDelete) {
-      setData(data.filter(v => v.id !== visitToDelete));
+      setData(data.filter(v => v._id !== visitToDelete));
       setDeleteModalOpen(false);
       setVisitToDelete(null);
     }
   };
 
   const filteredData = data.filter(v => {
-    const matchesSearch = v.venue.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          v.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          v.supervisor.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = (v.venueAddress || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          (v.customerName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          (v.phone || '').includes(searchQuery);
     
-    const matchesTab = activeTab === 'ALL VISITS' ? true : v.status.toUpperCase() === activeTab;
+    const matchesTab = activeTab === 'ALL VISITS' ? true : (v.status || '').toUpperCase() === activeTab;
 
     return matchesSearch && matchesTab;
   });
 
   const columns = [
     { 
-      header: 'Visit ID', 
-      accessorKey: 'id', 
-      cell: (row: any) => (
+      header: t('crm.customerName'), 
+      accessorKey: 'customerName', 
+      cell: (row: SiteVisit) => (
         <div>
-          <span className="font-medium text-primary">{row.id}</span>
-          <p className="text-xs text-muted-foreground mt-0.5">Ref: {row.leadId}</p>
+          <span className="font-bold text-foreground">{row.customerName}</span>
+          <p className="text-xs text-muted-foreground mt-0.5">{row.phone}</p>
         </div>
       ) 
     },
     { 
-      header: 'Venue & Customer', 
-      accessorKey: 'venue', 
-      cell: (row: any) => (
+      header: t('crm.venueAddress'), 
+      accessorKey: 'venueAddress', 
+      cell: (row: SiteVisit) => (
         <div>
           <p className="font-bold flex items-center gap-1.5">
-            <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
-            {row.venue}
+            <MapPin className="w-3.5 h-3.5 text-primary" />
+            {row.venueAddress}
           </p>
-          <p className="text-xs text-muted-foreground mt-0.5">{row.customerName}</p>
         </div>
       ) 
     },
     { 
-      header: 'Schedule', 
-      accessorKey: 'date',
-      cell: (row: any) => (
+      header: t('crm.visitDate'), 
+      accessorKey: 'visitDate',
+      cell: (row: SiteVisit) => (
         <div>
           <p className="font-medium flex items-center gap-1.5">
             <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
-            {row.date}
-          </p>
-          <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5">
-            <Clock className="w-3.5 h-3.5" />
-            {row.time}
+            {row.visitDate ? new Date(row.visitDate).toLocaleString() : 'TBD'}
           </p>
         </div>
       )
     },
     { 
-      header: 'Assigned To', 
-      accessorKey: 'supervisor',
-      cell: (row: any) => (
+      header: t('crm.assignedStaff'), 
+      accessorKey: 'assignedStaff',
+      cell: (row: SiteVisit) => (
         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary/10 text-secondary text-xs font-semibold">
           <Users className="w-3 h-3" />
-          {row.supervisor}
+          {row.assignedStaff?.name || 'Unassigned'}
         </span>
       )
     },
-    { header: 'Status', accessorKey: 'status', cell: (row: any) => <StatusBadge status={row.status} /> },
+    { 
+      header: t('crm.status'), 
+      accessorKey: 'status', 
+      cell: (row: SiteVisit) => {
+        let statusText = row.status || 'Scheduled';
+        let mappedStatus = 'Pending';
+        if (statusText === 'Scheduled') mappedStatus = 'Pending';
+        if (statusText === 'Completed') mappedStatus = 'Confirmed';
+        if (statusText === 'Cancelled') mappedStatus = 'Cancelled';
+        return <StatusBadge status={mappedStatus} customText={statusText} />;
+      }
+    },
     {
-      header: 'Actions', accessorKey: 'actions', cell: (row: any) => (
+      header: t('crm.actions'), accessorKey: 'actions', cell: (row: SiteVisit) => (
         <div className="flex items-center justify-end gap-2">
-          <Link href={`/crm/site-visits/${row.id}`}>
+          <Link href={`/crm/site-visits/${row._id}`}>
             <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors">
               <Eye className="w-4 h-4" />
             </Button>
           </Link>
-          <Link href={`/crm/site-visits/${row.id}/edit`}>
+          <Link href={`/crm/site-visits/${row._id}/edit`}>
             <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors">
               <Edit className="w-4 h-4" />
             </Button>
@@ -119,7 +130,7 @@ export function SiteVisitsView() {
             variant="ghost" 
             size="icon" 
             onClick={() => {
-              setVisitToDelete(row.id);
+              setVisitToDelete(row._id);
               setDeleteModalOpen(true);
             }}
             className="h-8 w-8 text-muted-foreground hover:text-error hover:bg-error/10 transition-colors"
@@ -131,24 +142,22 @@ export function SiteVisitsView() {
     },
   ];
 
-  if (loading) return <div className="p-8 text-center text-muted-foreground animate-pulse">Loading...</div>;
-
   return (
     <div className="flex flex-col p-4 md:p-6 lg:p-8 w-full">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h2 className="text-3xl font-black text-foreground tracking-tight mb-1">Site Visits</h2>
-          <p className="text-sm font-medium text-muted-foreground">Schedule venue inspections and gather measurements.</p>
+          <h2 className="text-3xl font-black text-foreground tracking-tight mb-1">{t('sidebar.siteVisits')}</h2>
+          <p className="text-sm font-medium text-muted-foreground">{t('crm.siteVisitsSub')}</p>
         </div>
         <div className="flex gap-3 w-full sm:w-auto">
-          <Button variant="outline" className="flex-1 sm:flex-none flex items-center justify-center gap-2">
-            <Filter className="w-4 h-4" />
-            Filter
+          <Button variant="outline" onClick={fetchSiteVisits} className="flex items-center justify-center gap-2">
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            {t('navbar.selectLanguage') !== 'Language' ? 'Refresh' : 'रिफ्रेश'}
           </Button>
           <Link href="/crm/site-visits/new" className="flex-1 sm:flex-none w-full sm:w-auto">
             <Button variant="primary" className="w-full flex items-center justify-center gap-2">
               <Plus className="w-4 h-4 shrink-0" />
-              <span className="truncate">Schedule Visit</span>
+              <span className="truncate">{t('crm.newSiteVisit')}</span>
             </Button>
           </Link>
         </div>
@@ -156,36 +165,36 @@ export function SiteVisitsView() {
 
       <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 shrink-0">
         <StatsCard
-          title="Total Scheduled"
+          title={t('crm.siteVisits')}
           value={data.length}
           icon={MapPin}
           colorTheme="primary"
         />
         <StatsCard
-          title="Pending Today"
-          value={data.filter(v => v.status === 'Pending').length}
-          icon={Clock}
+          title={t('crm.scheduled')}
+          value={data.filter(v => v.status === 'Scheduled' || !v.status).length}
+          icon={Calendar}
           colorTheme="warning"
         />
         <StatsCard
-          title="Completed"
+          title={t('crm.completed')}
           value={data.filter(v => v.status === 'Completed').length}
-          icon={CheckCircle}
+          icon={Users}
           colorTheme="success"
         />
         <StatsCard
-          title="Active Supervisors"
-          value="3"
+          title={t('crm.cancelled')}
+          value={data.filter(v => v.status === 'Cancelled').length}
           icon={Users}
-          colorTheme="secondary"
+          colorTheme="error"
         />
       </div>
 
-      <div className="flex-1 min-h-0 bg-card rounded-xl border border-border shadow-sm flex flex-col overflow-hidden">
+      <div className="flex-1 min-h-[400px] bg-card rounded-xl border border-border shadow-sm flex flex-col overflow-hidden">
         <div className="p-4 border-b border-border flex flex-col md:flex-row items-center justify-between gap-4 shrink-0">
           <div className="flex items-center gap-2 text-foreground font-bold text-lg whitespace-nowrap">
             <MapPin className="w-5 h-5 text-primary" />
-            Site Visits List
+            {t('crm.inspectionSchedule')}
           </div>
           
           <div className="flex items-center bg-muted/50 p-1 rounded-lg overflow-x-auto w-full md:w-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
@@ -199,7 +208,7 @@ export function SiteVisitsView() {
                     : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                 }`}
               >
-                {tab}
+                {tab === 'ALL VISITS' ? t('crm.allSiteVisits') : tab === 'SCHEDULED' ? t('crm.scheduled') : tab === 'COMPLETED' ? t('crm.completed') : t('crm.cancelled')}
               </button>
             ))}
           </div>
@@ -208,7 +217,7 @@ export function SiteVisitsView() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Search by venue or supervisor..."
+              placeholder={t('crm.searchSiteVisits')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-9 pr-4 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
@@ -217,10 +226,14 @@ export function SiteVisitsView() {
         </div>
         
         <div className="flex-1 overflow-auto">
-          <DataTable
-            columns={columns}
-            data={filteredData}
-          />
+          {loading ? (
+            <div className="p-8 text-center text-muted-foreground animate-pulse">Loading...</div>
+          ) : (
+            <DataTable
+              columns={columns}
+              data={filteredData}
+            />
+          )}
         </div>
       </div>
 
@@ -228,9 +241,9 @@ export function SiteVisitsView() {
         isOpen={deleteModalOpen}
         onClose={() => setDeleteModalOpen(false)}
         onConfirm={confirmDelete}
-        title="Cancel Site Visit"
-        message="Are you sure you want to delete this scheduled site visit?"
-        confirmText="Yes, Delete"
+        title={t('crm.deleteVisitConfirmTitle')}
+        message={t('crm.deleteVisitConfirmMsg')}
+        confirmText={t('crm.delete')}
       />
     </div>
   );

@@ -3,28 +3,37 @@
 import React, { useState } from 'react';
 import { cn } from '@/utils/cn';
 import { Store, ChevronDown, CheckCircle2, Plus } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface WarehouseData {
   id: string;
   name: string;
+  tKey?: string;
   status: 'Online' | 'Low Stock' | 'Offline';
 }
 
 const STATIC_WAREHOUSES: WarehouseData[] = [
-  { id: 'all', name: 'All Warehouses', status: 'Online' },
-  { id: '1', name: 'Main Warehouse', status: 'Online' },
+  { id: 'all', name: 'All Warehouses', tKey: 'warehouse.allWarehouses', status: 'Online' },
+  { id: '1', name: 'Main Warehouse', tKey: 'sidebar.warehouses', status: 'Online' },
   { id: '2', name: 'Jaipur Warehouse', status: 'Online' },
   { id: '3', name: 'Ajmer Warehouse', status: 'Low Stock' },
   { id: '4', name: 'Jodhpur Warehouse', status: 'Online' },
 ];
 
 export function WarehouseSwitcher() {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [activeWarehouse, setActiveWarehouse] = useState<WarehouseData>(STATIC_WAREHOUSES[0]);
 
   const handleSwitch = (warehouse: WarehouseData) => {
     setActiveWarehouse(warehouse);
     setIsOpen(false);
+  };
+
+  const getStatusText = (status: string) => {
+    if (status === 'Online') return t('warehouse.active', 'Online');
+    if (status === 'Low Stock') return t('warehouse.lowStock', 'Low Stock');
+    return t('warehouse.inactive', 'Offline');
   };
 
   return (
@@ -42,10 +51,10 @@ export function WarehouseSwitcher() {
           </div>
           <div className="flex flex-col items-start overflow-hidden text-left">
             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-tight">
-              Warehouse Status
+              {t('warehouse.status', 'Warehouse Status')}
             </span>
             <span className="text-sm font-bold truncate text-foreground leading-tight mt-0.5">
-              {activeWarehouse.name}
+              {activeWarehouse.tKey ? t(activeWarehouse.tKey) : activeWarehouse.name}
             </span>
           </div>
         </div>
@@ -66,7 +75,7 @@ export function WarehouseSwitcher() {
         <div className="py-2 bg-card/95 backdrop-blur-md border border-border/50 shadow-xl rounded-xl space-y-0.5 overflow-y-auto max-h-72">
           <div className="px-4 py-2 border-b border-border/50 mb-1">
             <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
-              Switch Warehouse
+              {t('warehouse.switchLabel', 'Switch Warehouse')}
             </p>
           </div>
 
@@ -86,7 +95,7 @@ export function WarehouseSwitcher() {
                   "text-sm font-bold truncate",
                   wh.id === activeWarehouse.id ? "text-primary" : "text-foreground"
                 )}>
-                  {wh.name}
+                  {wh.tKey ? t(wh.tKey) : wh.name}
                 </span>
                 {wh.id === activeWarehouse.id && (
                   <CheckCircle2 size={14} className="text-primary shrink-0" />
@@ -99,7 +108,7 @@ export function WarehouseSwitcher() {
                   wh.status === 'Low Stock' ? "bg-amber-500" : "bg-muted-foreground"
                 )} />
                 <span className="text-xs text-muted-foreground">
-                  {wh.status}
+                  {getStatusText(wh.status)}
                 </span>
               </div>
             </button>
@@ -115,7 +124,7 @@ export function WarehouseSwitcher() {
                 <Plus size={14} />
               </div>
               <span className="text-xs font-bold uppercase tracking-widest truncate">
-                Add Warehouse
+                {t('warehouse.addGodown')}
               </span>
             </button>
           </div>
@@ -124,3 +133,4 @@ export function WarehouseSwitcher() {
     </div>
   );
 }
+

@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Image from 'next/image';
+import { useTranslation } from 'react-i18next';
 
 interface AuthSplitLayoutProps {
   children: React.ReactNode;
@@ -10,6 +11,8 @@ interface AuthSplitLayoutProps {
 }
 
 export default function AuthSplitLayout({ children, title, subtitle }: AuthSplitLayoutProps) {
+  const { t } = useTranslation();
+
   return (
     <div className="min-h-screen w-full flex bg-background">
       {/* Left Panel: Branding & Visuals (Hidden on smaller screens) */}
@@ -39,10 +42,10 @@ export default function AuthSplitLayout({ children, title, subtitle }: AuthSplit
         {/* Bottom Content Section */}
         <div className="relative z-10 p-12 mb-12 max-w-lg">
           <h2 className="text-4xl font-bold text-white leading-tight mb-4 tracking-tight">
-            Manage your events with <span className="text-primary">Elegance</span>.
+            {t('auth.brandingTitle', 'Manage your events with Elegance.')}
           </h2>
           <p className="text-lg text-zinc-300 font-medium">
-            The ultimate ERP solution to streamline bookings, inventory, logistics, and executions.
+            {t('auth.brandingSub', 'The ultimate ERP solution to streamline bookings, inventory, logistics, and executions.')}
           </p>
         </div>
       </div>
@@ -63,10 +66,10 @@ export default function AuthSplitLayout({ children, title, subtitle }: AuthSplit
 
           <div className="mb-8">
             <h2 className="text-3xl font-black tracking-tight text-foreground mb-2">
-              {title || 'Welcome back'}
+              {title === 'Welcome back' || !title ? t('auth.signIn') : title}
             </h2>
             <p className="text-muted-foreground font-medium text-sm">
-              {subtitle || 'Please enter your credentials to access your account.'}
+              {subtitle && subtitle.includes('credentials') ? t('auth.signInSub') : (subtitle || t('auth.signInSub'))}
             </p>
           </div>
           
@@ -78,3 +81,4 @@ export default function AuthSplitLayout({ children, title, subtitle }: AuthSplit
     </div>
   );
 }
+

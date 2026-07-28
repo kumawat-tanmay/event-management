@@ -1,10 +1,5 @@
-import { CategoryForm } from '@/components/dashboard/inventory/categories/CategoryForm';
+import { redirect } from 'next/navigation';
 
-export const metadata = {
-  title: 'Add Category | Krishna Events ERP',
-  description: 'Add a new inventory category',
-};
-
-export default function NewCategoryPage() {
-  return <CategoryForm />;
+export default function RedirectPage() {
+  redirect('/inventory/items');
 }

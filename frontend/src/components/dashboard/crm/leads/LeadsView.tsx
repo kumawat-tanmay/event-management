@@ -2,23 +2,19 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Plus, Download, Users, Eye, Edit, Trash2, Search, Filter, MessageSquare, PhoneCall, MapPin, FileText, CheckCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { Plus, Users, Eye, Edit, Trash2, Search, MessageSquare, PhoneCall, RefreshCw } from 'lucide-react';
 import { DataTable } from '@/components/common/DataTable';
 import { Button } from '@/components/common/Button';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { StatsCard } from '@/components/common/StatsCard';
 import { ConfirmModal } from '@/components/common/ConfirmModal';
-
-const DUMMY_LEADS = [
-  { id: 'LD-1001', customerName: 'Rahul Verma', phone: '+91 9876543210', eventType: 'Wedding', date: '15 Oct 2026', source: 'Instagram', stage: 'New' },
-  { id: 'LD-1002', customerName: 'Anjali Sharma', phone: '+91 9876543211', eventType: 'Birthday', date: '22 Nov 2026', source: 'Reference', stage: 'Site Visit' },
-  { id: 'LD-1003', customerName: 'TechCorp Pvt Ltd', phone: '+91 9876543212', eventType: 'Corporate', date: '05 Dec 2026', source: 'Website', stage: 'Quotation' },
-  { id: 'LD-1004', customerName: 'Vikram Singh', phone: '+91 9876543213', eventType: 'Wedding', date: '12 Dec 2026', source: 'Walk-in', stage: 'Booked' },
-];
+import { crmService, Lead } from '@/lib/services/crm.services';
 
 export function LeadsView() {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
-  const [data, setData] = useState<any[]>([]);
+  const [data, setData] = useState<Lead[]>([]);
   const [activeTab, setActiveTab] = useState('ALL LEADS');
   const [searchQuery, setSearchQuery] = useState('');
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -26,42 +22,56 @@ export function LeadsView() {
   
   const tabs = ['ALL LEADS', 'NEW', 'SITE VISIT', 'QUOTATION', 'BOOKED', 'LOST'];
 
-  useEffect(() => {
-    // Simulate API fetch
-    setTimeout(() => {
-      setData(DUMMY_LEADS);
+  const fetchLeads = async () => {
+    setLoading(true);
+    try {
+      const leadsData = await crmService.getLeads();
+      setData(leadsData || []);
+    } catch (err) {
+      console.error('Error loading leads:', err);
+    } finally {
       setLoading(false);
-    }, 500);
+    }
+  };
+
+  useEffect(() => {
+    fetchLeads();
   }, []);
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (leadToDelete) {
-      setData(data.filter(l => l.id !== leadToDelete));
-      setDeleteModalOpen(false);
-      setLeadToDelete(null);
+      try {
+        await crmService.deleteLead(leadToDelete);
+        setData(data.filter(l => l._id !== leadToDelete));
+      } catch (err) {
+        console.error('Error deleting lead:', err);
+      } finally {
+        setDeleteModalOpen(false);
+        setLeadToDelete(null);
+      }
     }
   };
 
   const filteredData = data.filter(l => {
-    const matchesSearch = l.customerName.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          l.phone.includes(searchQuery) ||
-                          l.id.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = (l.customerName || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          (l.phone || '').includes(searchQuery) ||
+                          (l.leadId || '').toLowerCase().includes(searchQuery.toLowerCase());
     
-    const matchesTab = activeTab === 'ALL LEADS' ? true : l.stage.toUpperCase() === activeTab;
+    const matchesTab = activeTab === 'ALL LEADS' ? true : (l.stage || '').toUpperCase() === activeTab;
 
     return matchesSearch && matchesTab;
   });
 
   const columns = [
     { 
-      header: 'Lead ID', 
-      accessorKey: 'id', 
-      cell: (row: any) => <span className="font-medium text-primary">{row.id}</span> 
+      header: t('crm.leadId'), 
+      accessorKey: 'leadId', 
+      cell: (row: Lead) => <span className="font-bold text-primary">{row.leadId || '—'}</span> 
     },
     { 
-      header: 'Customer', 
+      header: t('crm.customerName'), 
       accessorKey: 'customerName', 
-      cell: (row: any) => (
+      cell: (row: Lead) => (
         <div>
           <p className="font-bold">{row.customerName}</p>
           <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
@@ -72,42 +82,55 @@ export function LeadsView() {
       ) 
     },
     { 
-      header: 'Event Details', 
+      header: t('crm.eventCategory'), 
       accessorKey: 'eventType',
-      cell: (row: any) => (
+      cell: (row: Lead) => (
         <div>
           <p className="font-medium">{row.eventType}</p>
-          <p className="text-xs text-muted-foreground mt-0.5">{row.date}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {row.eventDate ? new Date(row.eventDate).toLocaleDateString() : 'TBD'}
+          </p>
         </div>
       )
     },
-    { header: 'Source', accessorKey: 'source', cell: (row: any) => <span className="text-muted-foreground">{row.source}</span> },
+    { header: t('crm.source'), accessorKey: 'source', cell: (row: Lead) => <span className="text-muted-foreground">{row.source || 'Walk-in'}</span> },
     { 
-      header: 'Stage', 
+      header: t('crm.stage'), 
       accessorKey: 'stage', 
-      cell: (row: any) => {
-        let statusText = row.stage;
+      cell: (row: Lead) => {
+        let statusText = row.stage || 'New';
         let mappedStatus = 'Pending';
         if (statusText === 'New') mappedStatus = 'Pending';
         if (statusText === 'Site Visit') mappedStatus = 'In Progress';
         if (statusText === 'Quotation') mappedStatus = 'Review';
         if (statusText === 'Booked') mappedStatus = 'Confirmed';
         if (statusText === 'Lost') mappedStatus = 'Cancelled';
-        return <StatusBadge status={mappedStatus} customText={statusText} />;
+        
+        let displayStage: string = statusText;
+        if (statusText === 'New') displayStage = t('crm.stageNew');
+        if (statusText === 'Contacted') displayStage = t('crm.stageContacted');
+        if (statusText === 'Site Visit') displayStage = t('crm.stageSiteVisit');
+        if (statusText === 'Quotation') displayStage = t('crm.stageQuotation');
+        if (statusText === 'Booked') displayStage = t('crm.stageBooked');
+        if (statusText === 'Lost') displayStage = t('crm.stageLost');
+        
+        return <StatusBadge status={mappedStatus} customText={displayStage} />;
       }
     },
     {
-      header: 'Actions', accessorKey: 'actions', cell: (row: any) => (
+      header: t('crm.actions'), accessorKey: 'actions', cell: (row: Lead) => (
         <div className="flex items-center justify-end gap-2">
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 transition-colors" title="WhatsApp">
-            <MessageSquare className="w-4 h-4" />
-          </Button>
-          <Link href={`/crm/leads/${row.id}`}>
+          <a href={`https://wa.me/${row.phone.replace(/[^0-9]/g, '')}`} target="_blank" rel="noreferrer">
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 transition-colors" title="WhatsApp">
+              <MessageSquare className="w-4 h-4" />
+            </Button>
+          </a>
+          <Link href={`/crm/leads/${row._id}`}>
             <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors">
               <Eye className="w-4 h-4" />
             </Button>
           </Link>
-          <Link href={`/crm/leads/${row.id}/edit`}>
+          <Link href={`/crm/leads/${row._id}/edit`}>
             <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors">
               <Edit className="w-4 h-4" />
             </Button>
@@ -116,7 +139,7 @@ export function LeadsView() {
             variant="ghost" 
             size="icon" 
             onClick={() => {
-              setLeadToDelete(row.id);
+              setLeadToDelete(row._id);
               setDeleteModalOpen(true);
             }}
             className="h-8 w-8 text-muted-foreground hover:text-error hover:bg-error/10 transition-colors"
@@ -128,24 +151,22 @@ export function LeadsView() {
     },
   ];
 
-  if (loading) return <div className="p-8 text-center text-muted-foreground animate-pulse">Loading...</div>;
-
   return (
     <div className="flex flex-col p-4 md:p-6 lg:p-8 w-full">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h2 className="text-3xl font-black text-foreground tracking-tight mb-1">Sales Leads</h2>
-          <p className="text-sm font-medium text-muted-foreground">Track incoming inquiries and manage the sales pipeline.</p>
+          <h2 className="text-3xl font-black text-foreground tracking-tight mb-1">{t('sidebar.leads')}</h2>
+          <p className="text-sm font-medium text-muted-foreground">{t('crm.leadsSub')}</p>
         </div>
         <div className="flex gap-3 w-full sm:w-auto">
-          <Button variant="outline" className="flex-1 sm:flex-none flex items-center justify-center gap-2">
-            <Filter className="w-4 h-4" />
-            Filter
+          <Button variant="outline" onClick={fetchLeads} className="flex items-center justify-center gap-2">
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            {t('navbar.selectLanguage') !== 'Language' ? 'Refresh' : 'रिफ्रेश'}
           </Button>
           <Link href="/crm/leads/new" className="flex-1 sm:flex-none w-full sm:w-auto">
             <Button variant="primary" className="w-full flex items-center justify-center gap-2">
               <Plus className="w-4 h-4 shrink-0" />
-              <span className="truncate">Add Lead</span>
+              <span className="truncate">{t('crm.newLead')}</span>
             </Button>
           </Link>
         </div>
@@ -153,36 +174,36 @@ export function LeadsView() {
 
       <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 shrink-0">
         <StatsCard
-          title="Total Leads"
+          title={t('crm.totalInquiries')}
           value={data.length}
           icon={Users}
           colorTheme="primary"
         />
         <StatsCard
-          title="Pending Site Visits"
-          value={data.filter(l => l.stage === 'Site Visit' || l.stage === 'New').length}
-          icon={MapPin}
+          title={t('crm.newLead')}
+          value={data.filter(l => l.stage === 'New').length}
+          icon={Users}
           colorTheme="secondary"
         />
         <StatsCard
-          title="Quotations Sent"
-          value={data.filter(l => l.stage === 'Quotation').length}
-          icon={FileText}
+          title={t('crm.siteVisitsLabel')}
+          value={data.filter(l => l.stage === 'Site Visit').length}
+          icon={Users}
           colorTheme="warning"
         />
         <StatsCard
-          title="Converted to Booking"
+          title={t('sidebar.bookings')}
           value={data.filter(l => l.stage === 'Booked').length}
-          icon={CheckCircle}
+          icon={Users}
           colorTheme="success"
         />
       </div>
 
-      <div className="flex-1 min-h-0 bg-card rounded-xl border border-border shadow-sm flex flex-col overflow-hidden">
+      <div className="flex-1 min-h-[400px] bg-card rounded-xl border border-border shadow-sm flex flex-col overflow-hidden">
         <div className="p-4 border-b border-border flex flex-col md:flex-row items-center justify-between gap-4 shrink-0">
           <div className="flex items-center gap-2 text-foreground font-bold text-lg whitespace-nowrap">
             <Users className="w-5 h-5 text-primary" />
-            Leads List
+            {t('crm.leadsTitle')}
           </div>
           
           <div className="flex items-center bg-muted/50 p-1 rounded-lg overflow-x-auto w-full md:w-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
@@ -196,7 +217,12 @@ export function LeadsView() {
                     : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                 }`}
               >
-                {tab}
+                {tab === 'ALL LEADS' ? t('crm.allLeads') : 
+                 tab === 'NEW' ? t('crm.stageNew') :
+                 tab === 'SITE VISIT' ? t('crm.stageSiteVisit') :
+                 tab === 'QUOTATION' ? t('crm.stageQuotation') :
+                 tab === 'BOOKED' ? t('crm.stageBooked') :
+                 tab === 'LOST' ? t('crm.stageLost') : tab}
               </button>
             ))}
           </div>
@@ -205,7 +231,7 @@ export function LeadsView() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Search leads..."
+              placeholder={t('crm.searchLeads')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-9 pr-4 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
@@ -214,10 +240,14 @@ export function LeadsView() {
         </div>
         
         <div className="flex-1 overflow-auto">
-          <DataTable
-            columns={columns}
-            data={filteredData}
-          />
+          {loading ? (
+            <div className="p-8 text-center text-muted-foreground animate-pulse">Loading...</div>
+          ) : (
+            <DataTable
+              columns={columns}
+              data={filteredData}
+            />
+          )}
         </div>
       </div>
 
@@ -225,9 +255,9 @@ export function LeadsView() {
         isOpen={deleteModalOpen}
         onClose={() => setDeleteModalOpen(false)}
         onConfirm={confirmDelete}
-        title="Delete Lead"
-        message="Are you sure you want to delete this lead? This action cannot be undone."
-        confirmText="Delete Lead"
+        title={t('crm.deleteLeadConfirmTitle')}
+        message={t('crm.deleteLeadConfirmMsg')}
+        confirmText={t('crm.delete')}
       />
     </div>
   );

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useTranslation } from 'react-i18next';
 import {
   Home,
   CalendarDays,
@@ -48,6 +49,7 @@ import { WarehouseSwitcher } from './WarehouseSwitcher';
 
 interface NavLink {
   name: string;
+  tKey: string;
   href: string;
   icon: React.ElementType;
   permission?: string;
@@ -55,106 +57,122 @@ interface NavLink {
 }
 
 const erpNavLinks: NavLink[] = [
-  { name: 'Dashboard', href: '/', icon: Home, permission: 'dashboard.view' },
-  { name: 'Calendar', href: '/calendar', icon: CalendarDays, permission: 'operations.view' },
-  { name: 'Messages', href: '/chat', icon: MessageSquare },
+  { name: 'Dashboard', tKey: 'sidebar.dashboard', href: '/', icon: Home, permission: 'dashboard.view' },
+  { name: 'Calendar', tKey: 'sidebar.calendar', href: '/calendar', icon: CalendarDays, permission: 'operations.view' },
+  { name: 'Messages', tKey: 'sidebar.messages', href: '/chat', icon: MessageSquare },
   {
     name: 'CRM & Parties',
-    href: '/crm-group',
+    tKey: 'sidebar.crm',
+    href: '/crm',
     icon: Users,
     permission: 'crm.view',
     children: [
-      { name: 'Customers', href: '/crm/customers', icon: UserCircle, permission: 'crm.view' },
-      { name: 'Leads', href: '/crm/leads', icon: Users, permission: 'crm.view' },
-      { name: 'Site Visits', href: '/crm/site-visits', icon: Building, permission: 'crm.view' },
+      { name: 'Customers', tKey: 'sidebar.customers', href: '/crm/customers', icon: UserCircle, permission: 'crm.view' },
+      { name: 'Leads', tKey: 'sidebar.leads', href: '/crm/leads', icon: Users, permission: 'crm.view' },
+      { name: 'Site Visits', tKey: 'sidebar.siteVisits', href: '/crm/site-visits', icon: Building, permission: 'crm.view' },
     ]
   },
   {
     name: 'Sales & Bookings',
-    href: '/sales-group',
+    tKey: 'sidebar.sales',
+    href: '/sales',
     icon: Bookmark,
     permission: 'bookings.view',
     children: [
-      { name: 'Quotations', href: '/operations/quotations', icon: FileText, permission: 'quotations.view' },
-      { name: 'Bookings', href: '/operations/bookings', icon: BookOpen, permission: 'bookings.view' },
-      { name: 'Reservation', href: '/operations/reservation', icon: Bookmark, permission: 'bookings.view' },
+      { name: 'Quotations', tKey: 'sidebar.quotations', href: '/operations/quotations', icon: FileText, permission: 'quotations.view' },
+      { name: 'Bookings', tKey: 'sidebar.bookings', href: '/operations/bookings', icon: BookOpen, permission: 'bookings.view' },
+      { name: 'Reservation', tKey: 'sidebar.reservation', href: '/operations/reservation', icon: Bookmark, permission: 'bookings.view' },
     ]
   },
   {
     name: 'Event Execution',
-    href: '/events-group',
+    tKey: 'sidebar.execution',
+    href: '/events',
     icon: CalendarCheck,
     permission: 'operations.view',
     children: [
-      { name: 'Events List', href: '/events/list', icon: CalendarDays, permission: 'operations.view' },
-      { name: 'Event Planning', href: '/events/planner', icon: ClipboardList, permission: 'operations.view' },
-      { name: 'Packing & Dispatch', href: '/events/packing', icon: Box, permission: 'operations.view' },
-      { name: 'Site Verification', href: '/events/verification', icon: ShieldCheck, permission: 'operations.view' },
-      { name: 'Return & Damages', href: '/events/return', icon: RotateCcw, permission: 'operations.view' },
+      { name: 'Events List', tKey: 'sidebar.eventsList', href: '/events/list', icon: CalendarDays, permission: 'operations.view' },
+      { name: 'Event Planning', tKey: 'sidebar.eventPlanning', href: '/events/planner', icon: ClipboardList, permission: 'operations.view' },
+      { name: 'Packing & Dispatch', tKey: 'sidebar.packing', href: '/events/packing', icon: Box, permission: 'operations.view' },
+      { name: 'Site Verification', tKey: 'sidebar.verification', href: '/events/verification', icon: ShieldCheck, permission: 'operations.view' },
+      { name: 'Return & Damages', tKey: 'sidebar.returns', href: '/events/return', icon: RotateCcw, permission: 'operations.view' },
     ]
   },
   {
     name: 'Inventory',
-    href: '/inventory-group',
+    tKey: 'sidebar.inventory',
+    href: '/inventory',
     icon: Box,
     permission: 'inventory.view',
     children: [
-      { name: 'Items', href: '/inventory/items', icon: Box, permission: 'inventory.view' },
-      { name: 'Categories', href: '/inventory/categories', icon: ClipboardList, permission: 'inventory.view' },
-      { name: 'Ledger', href: '/inventory/ledger', icon: FileText, permission: 'inventory.view' },
+      { name: 'Items', tKey: 'sidebar.items', href: '/inventory/items', icon: Box, permission: 'inventory.view' },
+      { name: 'Ledger', tKey: 'sidebar.ledger', href: '/inventory/ledger', icon: FileText, permission: 'inventory.view' },
     ]
   },
   {
     name: 'HR & Payroll',
-    href: '/hr-group',
+    tKey: 'sidebar.hr',
+    href: '/hr',
     icon: UserCog,
     permission: 'hr.view',
     children: [
-      { name: 'Team / Staff', href: '/hr/team', icon: Users, permission: 'hr.view' },
-      { name: 'Payroll', href: '/hr/payroll', icon: Wallet, permission: 'hr.view' },
+      { name: 'Team / Staff', tKey: 'sidebar.team', href: '/hr/team', icon: Users, permission: 'hr.view' },
+      { name: 'Staff Records', tKey: 'sidebar.staff', href: '/hr/staff', icon: UserCog, permission: 'hr.view' },
+      { name: 'Vehicles', tKey: 'sidebar.vehicles', href: '/hr/vehicles', icon: Car, permission: 'hr.view' },
     ]
   },
   {
     name: 'Accounts & Finance',
-    href: '/accounts-group',
+    tKey: 'sidebar.finance',
+    href: '/accounts',
     icon: Wallet,
     permission: 'finance.view',
     children: [
-      { name: 'Payments', href: '/accounts/payments', icon: CreditCard, permission: 'finance.view' },
-      { name: 'Expenses', href: '/accounts/expenses', icon: ReceiptText, permission: 'finance.view' },
+      { name: 'Payments', tKey: 'sidebar.payments', href: '/finance/payments', icon: CreditCard, permission: 'finance.view' },
+      { name: 'Expenses', tKey: 'sidebar.expenses', href: '/finance/expenses', icon: ReceiptText, permission: 'finance.view' },
+      { name: 'Cashbook', tKey: 'sidebar.cashbook', href: '/finance/cashbook', icon: BookOpen, permission: 'finance.view' },
+      { name: 'Bankbook', tKey: 'sidebar.bankbook', href: '/finance/bankbook', icon: Building2, permission: 'finance.view' },
+      { name: 'Invoices', tKey: 'sidebar.invoices', href: '/finance/invoices', icon: ReceiptText, permission: 'finance.view' },
     ]
   },
   {
-    name: 'Asset & Fleet',
-    href: '/fleet-group',
+    name: 'Logistics & Assets',
+    tKey: 'sidebar.logistics',
+    href: '/logistics',
     icon: Truck,
     permission: 'warehouses.view',
     children: [
-      { name: 'Vehicles', href: '/fleet/vehicles', icon: Car, permission: 'warehouses.view' },
-      { name: 'Maintenance', href: '/fleet/maintenance', icon: Settings, permission: 'warehouses.view' },
+      { name: 'Warehouses', tKey: 'sidebar.warehouses', href: '/logistics/warehouses', icon: Building2, permission: 'warehouses.view' },
+      { name: 'Dispatches', tKey: 'sidebar.dispatches', href: '/logistics/dispatches', icon: Truck, permission: 'warehouses.view' },
+      { name: 'Stock Transfer', tKey: 'sidebar.transfer', href: '/logistics/transfer', icon: RotateCcw, permission: 'warehouses.view' },
     ]
   },
   {
     name: 'Analytics',
-    href: '/reports-group',
+    tKey: 'sidebar.analytics',
+    href: '/reports',
     icon: PieChart,
     permission: 'reports.view',
     children: [
-      { name: 'Business Overview', href: '/reports/overview', icon: TrendingUp, permission: 'reports.view' },
-      { name: 'Event Profitability', href: '/reports/event-profitability', icon: BarChart3, permission: 'reports.view' },
+      { name: 'Overview', tKey: 'sidebar.overview', href: '/reports', icon: TrendingUp, permission: 'reports.view' },
+      { name: 'Event Profitability', tKey: 'sidebar.profitability', href: '/reports/event-profitability', icon: BarChart3, permission: 'reports.view' },
+      { name: 'Damage Report', tKey: 'sidebar.damage', href: '/reports/damage', icon: AlertTriangle, permission: 'reports.view' },
+      { name: 'GST Report', tKey: 'sidebar.gst', href: '/reports/gst', icon: ReceiptText, permission: 'reports.view' },
     ]
   },
   {
     name: 'Settings',
-    href: '/settings-group',
+    tKey: 'sidebar.settings',
+    href: '/settings',
+
     icon: Settings,
     permission: 'users.view',
     children: [
-      { name: 'Profile', href: '/settings/profile', icon: UserCircle },
-      { name: 'Company', href: '/settings/company', icon: Building2 },
-      { name: 'Users', href: '/settings/users', icon: Users, permission: 'users.view' },
-      { name: 'Roles & Permissions', href: '/settings/roles', icon: ShieldCheck, permission: 'roles.view' },
-      { name: 'Preferences', href: '/settings/preferences', icon: Sliders },
+      { name: 'Profile', tKey: 'sidebar.profile', href: '/settings/profile', icon: UserCircle },
+      { name: 'Company', tKey: 'sidebar.company', href: '/settings/company', icon: Building2 },
+      { name: 'Users', tKey: 'sidebar.users', href: '/settings/users', icon: Users, permission: 'users.view' },
+      { name: 'Roles & Permissions', tKey: 'sidebar.roles', href: '/settings/roles', icon: ShieldCheck, permission: 'roles.view' },
+      { name: 'Preferences', tKey: 'sidebar.preferences', href: '/settings/preferences', icon: Sliders },
     ]
   },
 ];
@@ -184,6 +202,7 @@ export function SideNavBar({ isOpen, onClose }: SideNavBarProps) {
   const router = useRouter();
   const { hasPermission } = usePermissions();
   const [openSubMenus, setOpenSubMenus] = useState<string[]>(['CRM & Parties']);
+  const { t } = useTranslation();
 
   // Filter links based on required permissions
   const authorizedLinks = React.useMemo(() => {
@@ -231,7 +250,7 @@ export function SideNavBar({ isOpen, onClose }: SideNavBarProps) {
       )}
 
       <aside className={cn(
-        "fixed left-0 top-0 h-screen w-72 max-w-[85vw] bg-card/95 backdrop-blur-md z-50 transition-transform duration-300 ease-in-out flex flex-col p-6 border-r border-border/50 shadow-xl",
+        "fixed left-0 top-0 h-screen w-72 max-w-[85vw] bg-card/95 backdrop-blur-md z-50 transition-transform duration-300 ease-in-out flex flex-col p-6 border-r border-border/50 shadow-xl print:hidden",
         isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
       )}>
 
@@ -300,7 +319,7 @@ export function SideNavBar({ isOpen, onClose }: SideNavBarProps) {
                       "w-5 h-5 transition-transform duration-300",
                       isChildActive || isActive ? "text-primary" : "text-muted-foreground group-hover:text-primary"
                     )} />
-                    <span className="text-sm font-semibold flex-1 text-left">{link.name}</span>
+                    <span className="text-sm font-semibold flex-1 text-left">{t(link.tKey)}</span>
                     <ChevronDown className={cn(
                       "w-4 h-4 transition-transform duration-300",
                       isExpanded ? "rotate-180" : ""
@@ -323,7 +342,7 @@ export function SideNavBar({ isOpen, onClose }: SideNavBarProps) {
                       "w-5 h-5 transition-transform duration-300 group-hover:scale-110",
                       isActive ? "text-primary" : "text-muted-foreground group-hover:text-primary"
                     )} />
-                    <span className="text-sm font-semibold flex-1">{link.name}</span>
+                    <span className="text-sm font-semibold flex-1">{t(link.tKey)}</span>
                   </Link>
                 )}
 
@@ -348,7 +367,7 @@ export function SideNavBar({ isOpen, onClose }: SideNavBarProps) {
                           )}
                         >
                           <ChildIcon className="w-4 h-4" />
-                          <span>{child.name}</span>
+                          <span>{t(child.tKey)}</span>
                         </Link>
                       );
                     })}

@@ -16,6 +16,9 @@ const connectDB = async () => {
     });
 
     const conn = await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/krishna-event-erp', {
+      maxPoolSize: 10,
+      minPoolSize: 2,
+      maxIdleTimeMS: 30000,
       serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
       socketTimeoutMS: 45000, // Close sockets after 45s of inactivity
     });

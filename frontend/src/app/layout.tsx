@@ -10,9 +10,9 @@ import { Toaster } from 'react-hot-toast';
 // To be implemented later:
 import StoreProvider from "@/provider/StoreProvider";
 import GoogleAuthProvider from "@/provider/GoogleAuthProvider";
+import I18nProvider from "@/provider/I18nProvider";
 // import AutoScrollToTop from "@/components/common/AutoScrollToTop";
 // import InstallPWAButton from "@/components/common/InstallPWAButton";
-// import I18nProvider from "@/provider/I18nProvider";
 // import { buildMetadata } from "@/utils/seoConfig";
 
 const inter = Inter({
@@ -93,11 +93,12 @@ export default function RootLayout({
               }}
             />
 
-            <HydrationGuard>
-              {children}
-            </HydrationGuard>
+            <I18nProvider>
+              <HydrationGuard>
+                {children}
+              </HydrationGuard>
+            </I18nProvider>
             </GoogleAuthProvider>
-            {/* </I18nProvider> */}
           </StoreProvider>
         </ThemeProvider>
       </body>

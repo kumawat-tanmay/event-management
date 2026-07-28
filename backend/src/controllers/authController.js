@@ -14,7 +14,10 @@ const googleClient = new OAuth2Client(
 
 // Generate JWT
 const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET || 'secret', {
+  if (!process.env.JWT_SECRET) {
+    throw new Error('JWT_SECRET is missing from environment variables');
+  }
+  return jwt.sign({ id }, process.env.JWT_SECRET, {
     expiresIn: '30d',
   });
 };
@@ -146,9 +149,9 @@ const googleAuth = async (req, res) => {
 
     // 🔒 STRICT INVITE-ONLY: User MUST exist in the database beforehand!
     let user = await User.findOne({ 
-      email: { $regex: new RegExp(`^${normalizedEmail}$`, 'i') }, 
+      email: normalizedEmail, 
       isDeleted: false 
-    });
+    }).collation({ locale: 'en', strength: 2 });
 
     if (!user) {
       return res.status(401).json({ 
@@ -260,6 +263,10 @@ const resetPassword = async (req, res) => {
 
     if (!user) {
       return res.status(400).json({ success: false, message: 'Invalid token or token has expired' });
+    }
+
+    if (!req.body.password || req.body.password.length < 6) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 6 characters long' });
     }
 
     // Set new password

@@ -133,3 +133,73 @@
   border-radius: var(--radius-md); transition: all 0.2s;
 }
 .glass-input:focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(138, 90, 50, 0.15); outline: none; }
+
+/* ==========================================
+   A4 Printing Layout Spacing Optimization
+   ========================================== */
+@media print {
+  @page {
+    size: A4;
+    margin: 8mm 12mm; /* Optimized printable margins for A4 paper */
+  }
+
+  body {
+    background-color: white !important;
+    color: black !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Reset outer layout dimensions for print */
+  main,
+  body,
+  html {
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* Compact spacing for single page A4 fit */
+  .p-4, .p-6, .p-8, .p-12,
+  div[class*="p-4"], div[class*="p-6"], div[class*="p-8"], div[class*="p-12"] {
+    padding: 0 !important;
+  }
+
+  .mb-6, .mb-8, .mb-10, .mb-12,
+  div[class*="mb-6"], div[class*="mb-8"], div[class*="mb-10"], div[class*="mb-12"] {
+    margin-bottom: 10px !important;
+  }
+
+  .mt-6, .mt-8, .mt-10,
+  div[class*="mt-6"], div[class*="mt-8"], div[class*="mt-10"] {
+    margin-top: 8px !important;
+  }
+
+  .pb-6, .pb-8,
+  div[class*="pb-6"], div[class*="pb-8"] {
+    padding-bottom: 6px !important;
+  }
+
+  .pt-6, .pt-8,
+  div[class*="pt-6"], div[class*="pt-8"] {
+    padding-top: 6px !important;
+  }
+
+  /* Compact table rows */
+  td, th,
+  td[class*="py-"], th[class*="py-"] {
+    padding-top: 4px !important;
+    padding-bottom: 4px !important;
+  }
+
+  tr {
+    page-break-inside: avoid;
+  }
+
+  /* Ensure signature blocks do not break across pages */
+  div[class*="border-dashed"],
+  .border-t.border-dashed {
+    page-break-inside: avoid;
+    margin-top: 16px !important;
+    padding-top: 12px !important;
+  }
+}

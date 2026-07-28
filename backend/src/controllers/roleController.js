@@ -5,7 +5,9 @@ const Role = require('../models/Role');
 // @access  Private (roles.view)
 const getRoles = async (req, res) => {
   try {
-    const roles = await Role.find({ isDeleted: false }).sort({ createdAt: -1 }).lean();
+    const roles = await Role.find({ isDeleted: false })
+      .sort({ isSystem: -1, createdAt: 1 })
+      .lean();
     res.json({ success: true, data: roles });
   } catch (error) {
     console.error('Error fetching roles:', error);

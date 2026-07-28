@@ -1,1 +1,11 @@
-export default function Placeholder() { return <div className='p-8 flex items-center justify-center h-screen text-muted-foreground'>Coming Soon...</div>; }
+import React from 'react';
+import WarehousesView from '@/components/dashboard/logistics-group/warehouses/WarehousesView';
+
+export const metadata = {
+  title: 'Warehouses | Krishna Tent & Events ERP',
+  description: 'Manage warehouses, zones, and stock layout.',
+};
+
+export default function WarehousesPage() {
+  return <WarehousesView />;
+}

@@ -20,5 +20,6 @@ const roleSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
+roleSchema.index({ isDeleted: 1, isSystem: 1 });
 const Role = mongoose.model('Role', roleSchema);
 module.exports = Role;

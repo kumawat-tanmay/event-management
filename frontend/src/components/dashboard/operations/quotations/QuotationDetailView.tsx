@@ -1,54 +1,68 @@
 'use client';
 
-import React from 'react';
-import { useRouter } from 'next/navigation';
-import { ArrowLeft, Printer, Download, Edit, CheckCircle, FileText } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { useTranslation } from 'react-i18next';
+import { ArrowLeft, Printer, Download, Edit, CheckCircle, FileText, CalendarDays } from 'lucide-react';
 import { Button } from '@/components/common/Button';
 import { StatusBadge } from '@/components/common/StatusBadge';
+import { quotationService, Quotation } from '@/lib/services/quotation.services';
 
 export function QuotationDetailView() {
+  const { t } = useTranslation();
   const router = useRouter();
+  const { id } = useParams();
+  const [loading, setLoading] = useState(true);
+  const [quotation, setQuotation] = useState<Quotation | null>(null);
 
-  // Dummy Quotation Data
-  const quotation = {
-    id: 'QT-2026-001',
-    date: '2026-10-10',
-    validUntil: '2026-10-14',
-    status: 'Sent',
-    customer: {
-      name: 'Royal Weddings Agency',
-      address: '123 Event Planner Hub, Jaipur',
-      phone: '+91 9829054321',
-      gstin: '08AAAAA0000A1Z5',
-    },
-    eventDetails: {
-      startDate: '2026-10-15',
-      endDate: '2026-10-18',
-      type: 'Ready-Made Package',
-    },
-    items: [
-      { id: 1, name: 'White Pagoda Tent 10x10', code: 'TENT-WHT-01', rate: 2500, qty: 2, total: 5000 },
-      { id: 2, name: 'White VIP Sofa', code: 'SOFA-WHT-01', rate: 800, qty: 5, total: 4000 },
-      { id: 3, name: 'Round Table 5ft', code: 'TBL-RND-01', rate: 150, qty: 10, total: 1500 },
-      { id: 4, name: 'P4 LED Screen', code: 'LED-P4-001', rate: 150, qty: 200, total: 30000 },
-    ],
-    summary: {
-      itemsTotal: 40500,
-      transportCharge: 5000,
-      labourCharge: 3500,
-      subTotal: 49000,
-      discountPercent: 10,
-      discountAmount: 4900,
-      taxableAmount: 44100,
-      gst: 7938,
-      grandTotal: 52038,
+  const fetchQuotation = async () => {
+    if (!id) return;
+    try {
+      setLoading(true);
+      const data = await quotationService.getQuotationById(id as string);
+      setQuotation(data);
+    } catch (error) {
+      console.error('Error fetching quotation detail:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
+  useEffect(() => {
+    fetchQuotation();
+  }, [id]);
+
+  const handleConvertToBooking = async () => {
+    if (!id) return;
+    try {
+      const booking = await quotationService.convertToBooking(id as string);
+      router.push(`/operations/bookings/${booking._id}`);
+    } catch (error) {
+      console.error('Error converting quotation to booking:', error);
+    }
+  };
+
+  if (loading) return <div className="p-8 text-center text-muted-foreground animate-pulse">{t('crm.loading', 'Loading...')}</div>;
+  if (!quotation) return <div className="p-8 text-center text-error">Quotation not found</div>;
+
+  let statusKey = 'draft';
+  if (quotation.status === 'Sent') statusKey = 'sent';
+  if (quotation.status === 'Approved') statusKey = 'approved';
+  if (quotation.status === 'Converted') statusKey = 'converted';
+  if (quotation.status === 'Rejected') statusKey = 'rejected';
+
+  // Calculate duration
+  const start = new Date(quotation.eventStartDate);
+  const end = new Date(quotation.eventEndDate);
+  const duration = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+
+  const discountAmount = ((quotation.subtotal + quotation.transportCharges + quotation.labourCharges) * quotation.discount) / 100;
+  const taxableAmount = (quotation.subtotal + quotation.transportCharges + quotation.labourCharges) - discountAmount;
+
   return (
-    <div className="flex flex-col p-4 md:p-6 lg:p-8 w-full max-w-5xl mx-auto">
+    <div className="flex flex-col p-4 md:p-6 lg:p-8 w-full print:p-0">
       {/* Header Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 print:hidden">
         <div className="flex items-center gap-4">
           <Button 
             variant="ghost" 
@@ -60,17 +74,17 @@ export function QuotationDetailView() {
           </Button>
           <div>
             <div className="flex items-center gap-3">
-              <h2 className="text-2xl font-black text-foreground tracking-tight">Quotation #{quotation.id}</h2>
-              <StatusBadge status={quotation.status} />
+              <h2 className="text-2xl font-black text-foreground tracking-tight">{t('quotation.title')} #{quotation.quotationId}</h2>
+              <StatusBadge status={quotation.status} customText={t(`quotation.${statusKey}`)} />
             </div>
-            <p className="text-sm font-medium text-muted-foreground">Generated on {quotation.date}</p>
+            <p className="text-sm font-medium text-muted-foreground">Generated on {new Date(quotation.createdAt || '').toLocaleDateString()}</p>
           </div>
         </div>
         
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" className="flex items-center gap-2">
+          <Button variant="outline" className="flex items-center gap-2" onClick={() => window.print()}>
             <Printer className="w-4 h-4" />
-            Print
+            {t('bookings.printAgreement', 'Print')}
           </Button>
           <Button variant="outline" className="flex items-center gap-2">
             <Download className="w-4 h-4" />
@@ -79,21 +93,26 @@ export function QuotationDetailView() {
           <Button 
             variant="outline" 
             className="flex items-center gap-2"
-            onClick={() => router.push(`/operations/quotations/${quotation.id}/edit`)}
+            onClick={() => router.push(`/operations/quotations/${quotation._id}/edit`)}
             disabled={quotation.status === 'Converted'}
           >
             <Edit className="w-4 h-4" />
-            Edit
+            {t('quotation.editQuotation', 'Edit')}
           </Button>
-          <Button variant="primary" className="flex items-center gap-2" disabled={quotation.status === 'Converted'}>
+          <Button 
+            variant="primary" 
+            className="flex items-center gap-2" 
+            onClick={handleConvertToBooking}
+            disabled={quotation.status === 'Converted'}
+          >
             <CheckCircle className="w-4 h-4" />
-            Convert to Booking
+            {t('bookings.newBooking', 'Convert to Booking')}
           </Button>
         </div>
       </div>
 
       {/* A4 Document Container */}
-      <div className="bg-card border border-border shadow-sm rounded-xl p-8 max-w-4xl w-full mx-auto">
+      <div className="bg-card border border-border shadow-sm rounded-xl p-8 w-full print:border-0 print:shadow-none print:p-0">
         
         {/* Document Header */}
         <div className="flex justify-between items-start border-b border-border pb-6 mb-6">
@@ -107,74 +126,102 @@ export function QuotationDetailView() {
             <h2 className="text-2xl font-black text-foreground mb-2">QUOTATION</h2>
             <div className="text-sm">
               <span className="text-muted-foreground inline-block w-24">Quote No:</span>
-              <span className="font-bold">{quotation.id}</span>
+              <span className="font-bold">{quotation.quotationId}</span>
             </div>
             <div className="text-sm">
               <span className="text-muted-foreground inline-block w-24">Date:</span>
-              <span className="font-bold">{quotation.date}</span>
+              <span className="font-bold">{new Date(quotation.createdAt || '').toLocaleDateString()}</span>
             </div>
-            <div className="text-sm">
-              <span className="text-muted-foreground inline-block w-24">Valid Until:</span>
-              <span className="font-bold">{quotation.validUntil}</span>
-            </div>
+            {quotation.validUntil && (
+              <div className="text-sm">
+                <span className="text-muted-foreground inline-block w-24">Valid Until:</span>
+                <span className="font-bold">{new Date(quotation.validUntil).toLocaleDateString()}</span>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Customer & Event Details */}
-        <div className="grid grid-cols-2 gap-8 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
           <div>
-            <h3 className="text-xs font-bold uppercase text-muted-foreground mb-2">Quotation To</h3>
-            <p className="font-bold text-lg text-foreground">{quotation.customer.name}</p>
-            <p className="text-sm text-muted-foreground">{quotation.customer.address}</p>
-            <p className="text-sm text-muted-foreground">Ph: {quotation.customer.phone}</p>
-            {quotation.customer.gstin && (
-              <p className="text-sm text-muted-foreground">GSTIN: {quotation.customer.gstin}</p>
+            <h3 className="text-xs font-bold uppercase text-muted-foreground mb-2">{t('quotation.quotationDetails')}</h3>
+            <p className="font-bold text-lg text-foreground">{quotation.customer?.name || '—'}</p>
+            <p className="text-sm text-muted-foreground">{quotation.customer?.address || '—'}</p>
+            <p className="text-sm text-muted-foreground">Ph: {quotation.customer?.phone || '—'}</p>
+            {quotation.customer?.gstNumber && (
+              <p className="text-sm text-muted-foreground">GSTIN: {quotation.customer.gstNumber}</p>
             )}
           </div>
           <div>
-            <h3 className="text-xs font-bold uppercase text-muted-foreground mb-2">Event Details</h3>
+            <h3 className="text-xs font-bold uppercase text-muted-foreground mb-2">{t('quotation.eventDetails')}</h3>
             <div className="bg-muted/30 p-3 rounded-lg border border-border">
               <div className="flex justify-between text-sm mb-1">
+                <span className="text-muted-foreground">Event Title:</span>
+                <span className="font-bold text-foreground">{quotation.eventTitle}</span>
+              </div>
+              <div className="flex justify-between text-sm mb-1">
                 <span className="text-muted-foreground">Start Date:</span>
-                <span className="font-bold">{quotation.eventDetails.startDate}</span>
+                <span className="font-bold">{new Date(quotation.eventStartDate).toLocaleDateString()}</span>
               </div>
               <div className="flex justify-between text-sm mb-1">
                 <span className="text-muted-foreground">End Date:</span>
-                <span className="font-bold">{quotation.eventDetails.endDate}</span>
+                <span className="font-bold">{new Date(quotation.eventEndDate).toLocaleDateString()}</span>
+              </div>
+              <div className="flex justify-between text-sm mb-1">
+                <span className="text-muted-foreground">Duration:</span>
+                <span className="font-bold">{duration} Days</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Package Type:</span>
-                <span className="font-bold">{quotation.eventDetails.type}</span>
+                <span className="text-muted-foreground">Event Type:</span>
+                <span className="font-bold">{quotation.eventType}</span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Items Table */}
+        {/* Venue Address */}
         <div className="mb-8">
-          <table className="w-full text-left text-sm">
+          <h3 className="text-xs font-bold uppercase text-muted-foreground mb-2">Venue Address</h3>
+          <p className="text-sm text-foreground bg-muted/20 p-3 rounded-lg border border-border/50">{quotation.venueAddress}</p>
+        </div>
+
+        {/* Items Table */}
+        <div className="mb-8 overflow-x-auto">
+          <table className="w-full text-left text-sm min-w-[600px]">
             <thead className="bg-primary text-on-primary">
               <tr>
                 <th className="px-4 py-3 rounded-tl-lg font-bold">#</th>
                 <th className="px-4 py-3 font-bold">Item Description</th>
                 <th className="px-4 py-3 font-bold text-center">Rate/Day</th>
                 <th className="px-4 py-3 font-bold text-center">Qty</th>
+                <th className="px-4 py-3 font-bold text-center">Days</th>
                 <th className="px-4 py-3 font-bold text-right rounded-tr-lg">Total</th>
               </tr>
             </thead>
             <tbody>
-              {quotation.items.map((item, index) => (
-                <tr key={item.id} className="border-b border-border">
-                  <td className="px-4 py-3 font-medium text-muted-foreground">{index + 1}</td>
-                  <td className="px-4 py-3">
-                    <p className="font-bold text-foreground">{item.name}</p>
-                    <p className="text-xs text-muted-foreground">{item.code}</p>
-                  </td>
-                  <td className="px-4 py-3 text-center">₹ {item.rate}</td>
-                  <td className="px-4 py-3 text-center font-bold">{item.qty}</td>
-                  <td className="px-4 py-3 text-right font-bold">₹ {item.total.toLocaleString()}</td>
-                </tr>
-              ))}
+              {quotation.items.map((item, index) => {
+                const itemObj = typeof item.item === 'object' ? item.item : null;
+                const name = item.itemName || (itemObj as any)?.name || 'Unknown Item';
+                const code = item.itemCode || (itemObj as any)?.code || '—';
+                const rate = item.rentalRate !== undefined ? item.rentalRate : ((item as any).rentalPrice !== undefined ? (item as any).rentalPrice : ((itemObj as any)?.rentalPrice || 0));
+                const qty = item.quantity || 0;
+                const days = item.duration !== undefined ? item.duration : ((item as any).days || 1);
+                const total = item.totalAmount !== undefined ? item.totalAmount : ((item as any).total || 0);
+
+                return (
+                  <tr key={index} className="border-b border-border">
+                    <td className="px-4 py-3 font-medium text-muted-foreground">{index + 1}</td>
+                    <td className="px-4 py-3">
+                      <p className="font-bold text-foreground">{name}</p>
+                      <p className="text-xs text-muted-foreground">{code}</p>
+                    </td>
+                    <td className="px-4 py-3 text-center">₹ {rate}</td>
+                    <td className="px-4 py-3 text-center font-bold">{qty}</td>
+                    <td className="px-4 py-3 text-center">{days}</td>
+                    <td className="px-4 py-3 text-right font-bold">₹ {total.toLocaleString()}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -183,38 +230,38 @@ export function QuotationDetailView() {
         <div className="flex justify-end mb-8">
           <div className="w-full max-w-sm space-y-2">
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Items Total:</span>
-              <span className="font-bold">₹ {quotation.summary.itemsTotal.toLocaleString()}</span>
+              <span className="text-muted-foreground">{t('quotation.itemsTotal')}:</span>
+              <span className="font-bold">₹ {quotation.subtotal.toLocaleString()}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Transport Charges:</span>
-              <span className="font-bold">₹ {quotation.summary.transportCharge.toLocaleString()}</span>
+              <span className="text-muted-foreground">{t('quotation.transport')}:</span>
+              <span className="font-bold">₹ {quotation.transportCharges.toLocaleString()}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Labour Charges:</span>
-              <span className="font-bold">₹ {quotation.summary.labourCharge.toLocaleString()}</span>
+              <span className="text-muted-foreground">{t('quotation.labour')}:</span>
+              <span className="font-bold">₹ {quotation.labourCharges.toLocaleString()}</span>
             </div>
             <div className="border-t border-border pt-2 flex justify-between text-sm">
-              <span className="font-bold">Sub Total:</span>
-              <span className="font-bold">₹ {quotation.summary.subTotal.toLocaleString()}</span>
+              <span className="font-bold">{t('quotation.subTotal')}:</span>
+              <span className="font-bold">₹ {(quotation.subtotal + quotation.transportCharges + quotation.labourCharges).toLocaleString()}</span>
             </div>
-            {quotation.summary.discountAmount > 0 && (
+            {quotation.discount > 0 && (
               <div className="flex justify-between text-sm text-success">
-                <span>Discount ({quotation.summary.discountPercent}%):</span>
-                <span className="font-bold">- ₹ {quotation.summary.discountAmount.toLocaleString()}</span>
+                <span>Discount ({quotation.discount}%):</span>
+                <span className="font-bold">- ₹ {discountAmount.toLocaleString()}</span>
               </div>
             )}
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Taxable Amount:</span>
-              <span className="font-bold">₹ {quotation.summary.taxableAmount.toLocaleString()}</span>
+              <span className="text-muted-foreground">{t('quotation.taxableAmount')}:</span>
+              <span className="font-bold">₹ {taxableAmount.toLocaleString()}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">GST (18%):</span>
-              <span className="font-bold">₹ {quotation.summary.gst.toLocaleString()}</span>
+              <span className="text-muted-foreground">{t('quotation.gstChecked')} ({quotation.taxRate}%):</span>
+              <span className="font-bold">₹ {quotation.taxAmount.toLocaleString()}</span>
             </div>
             <div className="border-t-2 border-primary mt-2 pt-3 flex justify-between">
-              <span className="text-lg font-black text-foreground">Grand Total:</span>
-              <span className="text-xl font-black text-primary">₹ {quotation.summary.grandTotal.toLocaleString()}</span>
+              <span className="text-lg font-black text-foreground">{t('quotation.grandTotal')}:</span>
+              <span className="text-xl font-black text-primary">₹ {quotation.grandTotal.toLocaleString()}</span>
             </div>
           </div>
         </div>
