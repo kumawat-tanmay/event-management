@@ -1,39 +1,130 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
+import { useTranslation } from 'react-i18next';
 import { 
-  ArrowLeft, ClipboardCheck, Truck, CheckCircle2, 
-  AlertTriangle, Save, Store, Trash2
+  ArrowLeft, ClipboardCheck, CheckCircle2, 
+  AlertTriangle, Save, Store
 } from 'lucide-react';
 import { Button } from '@/components/common/Button';
 import { PageHeader } from '@/components/common/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/common/Card';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { cn } from '@/utils/cn';
+import useSWR from 'swr';
+import { bookingService } from '@/lib/services/booking.services';
+import { eventExecutionService } from '@/lib/services/eventExecution.services';
+import { userService } from '@/lib/services/user.services';
+import { warehouseService } from '@/lib/services/warehouse.services';
+import { toast } from 'react-hot-toast';
+import { PhotoUpload } from '../gallery/PhotoUpload';
 
 export function ReturnVerificationForm() {
+  const { t } = useTranslation();
   const router = useRouter();
   const params = useParams();
-  const eventId = params.id as string;
+  const bookingId = params.id as string;
 
-  const [items, setItems] = useState([
-    { id: 'ITM-001', name: 'Plastic Chair (White)', dispatched: 300, returned: 300, good: 295, damaged: 5, scrap: 0, missing: 0 },
-    { id: 'ITM-002', name: 'Banquet Table (Round)', dispatched: 50, returned: 50, good: 50, damaged: 0, scrap: 0, missing: 0 },
-    { id: 'ITM-003', name: 'Sofa Set (3-Seater)', dispatched: 5, returned: 4, good: 4, damaged: 0, scrap: 0, missing: 1 },
-  ]);
+  const { data: booking, mutate: mutateBooking } = useSWR(
+    bookingId ? `/bookings/${bookingId}` : null,
+    () => bookingService.getBookingById(bookingId)
+  );
+  const { data: users = [] } = useSWR('/users', () => userService.getUsers());
+  const { data: warehouses = [] } = useSWR('/warehouses', () => warehouseService.getWarehouses());
 
+  const [items, setItems] = useState<any[]>([]);
   const [remarks, setRemarks] = useState('');
+  const [supervisorName, setSupervisorName] = useState('');
+  const [warehouseId, setWarehouseId] = useState('');
+  const [photos, setPhotos] = useState<(File | string)[]>([]);
+  const [submitting, setSubmitting] = useState(false);
 
-  const updateItem = (index: number, field: string, value: string) => {
-    const val = parseInt(value) || 0;
-    const newItems = [...items];
-    (newItems[index] as any)[field] = val;
-    setItems(newItems);
+  useEffect(() => {
+    if (booking?.assignedSupervisor) {
+      const sup = booking.assignedSupervisor;
+      const name = typeof sup === 'object' ? sup.name : sup;
+      setSupervisorName(name || '');
+    }
+  }, [booking]);
+
+  useEffect(() => {
+    if (warehouses && warehouses.length > 0) {
+      const defaultWh = warehouses.find((w: any) => w.isDefault) || warehouses[0];
+      setWarehouseId(defaultWh?._id || '');
+    }
+  }, [warehouses]);
+
+  useEffect(() => {
+    if (booking && booking.items) {
+      setItems(
+        booking.items.map((i: any) => {
+          const qty = i.quantity || i.qty || 1;
+          return {
+            item: typeof i.item === 'object' ? i.item._id : i.item,
+            name: i.itemName || i.name || 'Equipment Item',
+            code: i.itemCode || i.code || '',
+            dispatched: qty,
+            returnedGood: qty,
+            returnedDamaged: 0,
+            missing: 0,
+          };
+        })
+      );
+    }
+  }, [booking]);
+
+  const updateItemQty = (index: number, field: string, val: number) => {
+    const cleanVal = Math.max(0, val);
+    setItems(
+      items.map((it, idx) => (idx === index ? { ...it, [field]: cleanVal } : it))
+    );
   };
 
+  const handleSettle = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bookingId) return;
+
+    if (items.length === 0) {
+      toast.error('No items found in booking to settle return');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await eventExecutionService.submitReturnAndSettle({
+        bookingId,
+        remarks,
+        supervisorName,
+        photos,
+        warehouseId,
+        returnItems: items.map(it => ({
+          item: it.item,
+          name: it.name,
+          code: it.code,
+          requestedQty: it.dispatched,
+          dispatchedQty: it.dispatched,
+          returnedGoodQty: Number(it.returnedGood),
+          returnedDamagedQty: Number(it.returnedDamaged),
+          missingQty: Number(it.missing),
+        })),
+      });
+
+      toast.success(t('events.settlementSuccess', 'Godown stock settled successfully!'));
+      mutateBooking();
+      router.push(`/events/list/${bookingId}`);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || err.message || 'Failed to settle stock return');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const bookingRef = booking?.bookingId || (booking as any)?.bookingNumber || 'BK-2026';
+  const isAlreadyReturned = booking?.status === 'Completed' || (booking as any)?.status === 'Returned';
+
   return (
-    <div className="flex flex-col h-full space-y-6 p-4 md:p-6 lg:p-8 w-full max-w-full">
+    <div className="flex flex-col h-full space-y-6 p-4 md:p-6 lg:p-8 w-full max-w-full font-sans">
       {/* Header */}
       <div className="flex items-center gap-4">
         <Button variant="outline" size="sm" onClick={() => router.back()} className="h-8 w-8 p-0 shrink-0">
@@ -41,55 +132,77 @@ export function ReturnVerificationForm() {
         </Button>
         <div className="flex-1 min-w-0">
           <PageHeader 
-            title="Return Verification & QC" 
-            description={`Verify materials received from ${eventId || 'Event'} and assess condition`}
+            title={t('events.returnChecklist')} 
+            description={`Itemized QC and stock settlement for ${bookingRef}`}
           />
-        </div>
-        <div className="flex items-center gap-2 shrink-0 mt-2">
-          <Button variant="primary" size="sm">
-            <Save className="w-4 h-4 mr-2" />
-            Save Verification
-          </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <form onSubmit={handleSettle} className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Left Column: Logistics Info */}
         <div className="lg:col-span-1 space-y-6">
           <Card className="border-border shadow-sm">
             <CardHeader className="border-b border-border bg-muted/30 pb-4">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold px-2 py-1 rounded-full bg-primary/10 text-primary">
-                  Return #RET-092
+                <span className="text-xs font-mono font-bold text-primary">
+                  {bookingRef}
                 </span>
-                <StatusBadge status="Pending QC" />
+                <StatusBadge status={isAlreadyReturned ? 'Confirmed' : 'Pending'} customText={booking?.status || 'Active'} />
               </div>
-              <CardTitle className="text-lg font-bold leading-tight">Receipt Details</CardTitle>
+              <CardTitle className="text-lg font-bold leading-tight">{booking?.eventTitle || 'Event Setup'}</CardTitle>
             </CardHeader>
             <CardContent className="pt-6 space-y-5">
               <div className="flex items-start gap-3">
-                <Store className="w-4 h-4 text-primary mt-0.5" />
+                <Store className="w-4 h-4 text-primary mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-sm font-medium">Main Godown</p>
-                  <p className="text-xs text-muted-foreground">Receiving Warehouse</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <Truck className="w-4 h-4 text-primary mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium">RJ-14-GA-1234</p>
-                  <p className="text-xs text-muted-foreground">Return Vehicle</p>
+                  <p className="text-sm font-medium text-foreground">{booking?.venueAddress || 'Main Godown'}</p>
+                  <p className="text-xs text-muted-foreground">Venue Location</p>
                 </div>
               </div>
               
-              <div className="pt-4 border-t border-border space-y-2">
-                <label className="text-sm font-semibold text-foreground">Store Manager Remarks</label>
+              <div className="space-y-1.5 pt-2">
+                <label className="text-xs font-bold text-foreground">Supervisor Name</label>
+                <select
+                  className="w-full h-9 px-3 border border-border rounded-lg bg-background text-xs focus:outline-none focus:ring-1 focus:ring-primary text-foreground font-semibold"
+                  value={supervisorName}
+                  onChange={e => setSupervisorName(e.target.value)}
+                  disabled={isAlreadyReturned}
+                >
+                  <option value="">-- Select Supervisor --</option>
+                  {users.map((u: any) => (
+                    <option key={u._id} value={u.name}>{u.name} ({u.role})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1.5 pt-2">
+                <label className="text-xs font-bold text-foreground">Destination Warehouse</label>
+                <select
+                  className="w-full h-9 px-3 border border-border rounded-lg bg-background text-xs focus:outline-none focus:ring-1 focus:ring-primary text-foreground font-semibold"
+                  value={warehouseId}
+                  onChange={e => setWarehouseId(e.target.value)}
+                  disabled={isAlreadyReturned}
+                >
+                  <option value="">-- Select Destination Godown --</option>
+                  {warehouses.map((w: any) => (
+                    <option key={w._id} value={w._id}>{w.name} ({w.code})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="pt-2 border-t border-border space-y-2">
+                <label className="text-xs font-semibold text-foreground">{t('events.remarksDiscrepancies')}</label>
                 <textarea 
-                  className="w-full h-24 p-3 border border-border rounded-lg bg-background text-sm resize-none focus:outline-none focus:ring-1 focus:ring-primary"
-                  placeholder="Notes on missing or damaged items for customer billing..."
+                  className="w-full h-24 p-3 border border-border rounded-lg bg-background text-xs resize-none focus:outline-none focus:ring-1 focus:ring-primary"
+                  placeholder="Notes on missing or damaged items..."
                   value={remarks}
                   onChange={(e) => setRemarks(e.target.value)}
                 />
+              </div>
+
+              <div className="pt-2 border-t border-border space-y-2">
+                <label className="text-xs font-semibold text-foreground">Return Setup Photos</label>
+                <PhotoUpload photos={photos} onChange={setPhotos} />
               </div>
             </CardContent>
           </Card>
@@ -98,84 +211,72 @@ export function ReturnVerificationForm() {
         {/* Right Column: Verification Checklist */}
         <div className="lg:col-span-3 space-y-6">
           <Card className="border-border shadow-sm h-full flex flex-col min-h-[500px]">
-            <CardHeader className="border-b border-border bg-muted/30 pb-4">
+            <CardHeader className="border-b border-border bg-muted/30 pb-4 flex flex-row items-center justify-between">
               <CardTitle className="text-sm font-bold flex items-center gap-2">
                 <ClipboardCheck className="w-4 h-4 text-primary" />
-                Item Quality Control (QC) Checklist
+                Item Quality Control (QC) & Stock Settlement
               </CardTitle>
+              <Button type="submit" variant="primary" size="sm" disabled={submitting || isAlreadyReturned}>
+                <Save className="w-4 h-4 mr-2" />
+                {submitting ? 'Settling Stock...' : isAlreadyReturned ? 'Already Settled' : t('events.verifyAndSettle')}
+              </Button>
             </CardHeader>
             
             <CardContent className="pt-0 p-0 flex-1 overflow-auto">
-              <table className="w-full text-left border-collapse">
-                <thead className="bg-muted/50 text-xs uppercase text-muted-foreground sticky top-0 z-10 backdrop-blur-sm border-b border-border">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead className="bg-muted/50 uppercase text-muted-foreground font-black tracking-wider border-b border-border">
                   <tr>
-                    <th className="px-4 py-3 font-semibold w-[25%]">Item Name</th>
-                    <th className="px-4 py-3 font-semibold text-center">Dispatched</th>
-                    <th className="px-4 py-3 font-semibold text-center">Returned</th>
-                    <th className="px-4 py-3 font-semibold text-center text-success">Good (OK)</th>
-                    <th className="px-4 py-3 font-semibold text-center text-warning">Repairable</th>
-                    <th className="px-4 py-3 font-semibold text-center text-error">Scrap</th>
-                    <th className="px-4 py-3 font-semibold text-center text-error">Missing</th>
+                    <th className="p-4">Item Details</th>
+                    <th className="p-4 text-center">Dispatched</th>
+                    <th className="p-4 text-center text-emerald-600 font-bold">{t('events.returnedGood')}</th>
+                    <th className="p-4 text-center text-amber-600 font-bold">{t('events.returnedDamaged')}</th>
+                    <th className="p-4 text-center text-red-600 font-bold">{t('events.missingQty')}</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border">
+                <tbody className="divide-y divide-border text-foreground font-medium">
                   {items.map((item, idx) => (
-                    <tr key={item.id} className="hover:bg-muted/20 transition-colors">
-                      <td className="px-4 py-3">
-                        <p className="font-bold text-sm text-foreground">{item.name}</p>
-                        <p className="text-xs text-muted-foreground font-mono mt-0.5">{item.id}</p>
+                    <tr key={item.item || idx} className="hover:bg-muted/10">
+                      <td className="p-4">
+                        <p className="font-bold text-foreground text-sm">{item.name}</p>
+                        <span className="text-[10px] text-muted-foreground font-mono mt-0.5 block">{item.code}</span>
                       </td>
-                      <td className="px-4 py-3 text-center">
-                        <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-muted text-sm font-bold">
-                          {item.dispatched}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-center">
+                      <td className="p-4 text-center font-black text-sm">{item.dispatched}</td>
+                      <td className="p-4 text-center">
                         <input 
                           type="number" 
-                          value={item.returned}
-                          onChange={(e) => updateItem(idx, 'returned', e.target.value)}
-                          className="w-16 text-center text-sm font-bold border border-border rounded py-1.5 bg-background focus:ring-1 focus:ring-primary"
+                          min="0"
+                          max={item.dispatched}
+                          value={item.returnedGood}
+                          onChange={(e) => updateItemQty(idx, 'returnedGood', Number(e.target.value))}
+                          disabled={isAlreadyReturned}
+                          className="w-16 text-center text-sm font-bold border border-emerald-300 bg-emerald-50 text-emerald-800 rounded py-1.5 outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-60"
                         />
                       </td>
-                      <td className="px-4 py-3 text-center">
+                      <td className="p-4 text-center">
                         <input 
                           type="number" 
-                          value={item.good}
-                          onChange={(e) => updateItem(idx, 'good', e.target.value)}
-                          className="w-16 text-center text-sm font-bold border border-success/30 bg-success/5 text-success rounded py-1.5 focus:ring-1 focus:ring-success"
-                        />
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <input 
-                          type="number" 
-                          value={item.damaged}
-                          onChange={(e) => updateItem(idx, 'damaged', e.target.value)}
+                          min="0"
+                          max={item.dispatched}
+                          value={item.returnedDamaged}
+                          onChange={(e) => updateItemQty(idx, 'returnedDamaged', Number(e.target.value))}
+                          disabled={isAlreadyReturned}
                           className={cn(
-                            "w-16 text-center text-sm font-bold border rounded py-1.5 focus:ring-1 focus:ring-warning",
-                            item.damaged > 0 ? "border-warning/50 bg-warning/10 text-warning" : "border-border bg-background"
+                            "w-16 text-center text-sm font-bold border rounded py-1.5 outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-60",
+                            item.returnedDamaged > 0 ? "border-amber-400 bg-amber-50 text-amber-800" : "border-border bg-background"
                           )}
                         />
                       </td>
-                      <td className="px-4 py-3 text-center">
+                      <td className="p-4 text-center">
                         <input 
                           type="number" 
-                          value={item.scrap}
-                          onChange={(e) => updateItem(idx, 'scrap', e.target.value)}
-                          className={cn(
-                            "w-16 text-center text-sm font-bold border rounded py-1.5 focus:ring-1 focus:ring-error",
-                            item.scrap > 0 ? "border-error/50 bg-error/10 text-error" : "border-border bg-background"
-                          )}
-                        />
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <input 
-                          type="number" 
+                          min="0"
+                          max={item.dispatched}
                           value={item.missing}
-                          onChange={(e) => updateItem(idx, 'missing', e.target.value)}
+                          onChange={(e) => updateItemQty(idx, 'missing', Number(e.target.value))}
+                          disabled={isAlreadyReturned}
                           className={cn(
-                            "w-16 text-center text-sm font-bold border rounded py-1.5 focus:ring-1 focus:ring-error",
-                            item.missing > 0 ? "border-error/50 bg-error/10 text-error" : "border-border bg-background"
+                            "w-16 text-center text-sm font-bold border rounded py-1.5 outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-60",
+                            item.missing > 0 ? "border-red-400 bg-red-50 text-red-800" : "border-border bg-background"
                           )}
                         />
                       </td>
@@ -186,7 +287,7 @@ export function ReturnVerificationForm() {
             </CardContent>
           </Card>
         </div>
-      </div>
+      </form>
     </div>
   );
 }

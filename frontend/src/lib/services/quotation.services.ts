@@ -3,15 +3,11 @@ import apiClient from '../apiClient';
 // ─── TypeScript Interfaces ──────────────────────────────────────────────────
 
 export interface QuotationItem {
-  item: string;
+  item?: string | null;
   itemName: string;
   itemCode?: string;
   unit?: string;
-  rentalRate: number;
   quantity: number;
-  duration: number;
-  discount?: number;
-  totalAmount: number;
 }
 
 export interface Quotation {
@@ -90,6 +86,7 @@ export const quotationService = {
     status?: string;
     startDate?: string;
     endDate?: string;
+    customer?: string;
     page?: number;
     limit?: number;
   }): Promise<GetQuotationsResponse> => {

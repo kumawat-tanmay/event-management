@@ -4,35 +4,33 @@ const { generateQuotationId, calculateQuotationTotals } = require('../services/q
 const { checkMultiWarehouseAvailability } = require('../services/stockService');
 const { convertQuotationToBooking } = require('../services/bookingService');
 
-// Helper to sanitize empty ObjectId fields
-const sanitizePayload = (body) => {
-  const payload = { ...body };
-  if (payload.customer === '' || payload.customer === null) delete payload.customer;
-  if (payload.lead === '' || payload.lead === null) delete payload.lead;
-  if (payload.assignedSupervisor === '' || payload.assignedSupervisor === null) delete payload.assignedSupervisor;
-  return payload;
-};
+const { sanitizePayload } = require('../utils/sanitize');
 
 // ─── GET /api/quotations ─────────────────────────────────────────────────────
 // @desc    List quotations with pagination, search, status & date filter
 const getQuotations = async (req, res) => {
   try {
-    const { search, status, startDate, endDate, page = 1, limit = 50 } = req.query;
+    const { search, status, startDate, endDate, customer, page = 1, limit = 50 } = req.query;
     const query = { isDeleted: false };
 
     if (status && status !== 'All') {
       query.status = status;
     }
 
+    if (customer) {
+      query.customer = customer;
+    }
+
     if (search) {
+      const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       query.$or = [
-        { quotationId: { $regex: search, $options: 'i' } },
-        { eventTitle: { $regex: search, $options: 'i' } }
+        { quotationId: { $regex: escapedSearch, $options: 'i' } },
+        { eventTitle: { $regex: escapedSearch, $options: 'i' } }
       ];
     }
 
     if (startDate || endDate) {
-      query.eventStartDate = {};
+      query.eventStartDate = {}; 
       if (startDate) query.eventStartDate.$gte = new Date(startDate);
       if (endDate) query.eventStartDate.$lte = new Date(endDate);
     }
@@ -48,16 +46,29 @@ const getQuotations = async (req, res) => {
       .lean();
 
     // Aggregate stats
-    const allQuotations = await Quotation.find({ isDeleted: false }).lean();
+    const aggResult = await Quotation.aggregate([
+      { $match: { isDeleted: false } },
+      { $group: {
+          _id: '$status',
+          count: { $sum: 1 },
+          totalValue: { $sum: '$grandTotal' }
+        }
+      }
+    ]);
+
     const stats = {
-      total: allQuotations.length,
-      draft: allQuotations.filter(q => q.status === 'Draft').length,
-      sent: allQuotations.filter(q => q.status === 'Sent').length,
-      approved: allQuotations.filter(q => q.status === 'Approved').length,
-      converted: allQuotations.filter(q => q.status === 'Converted').length,
-      rejected: allQuotations.filter(q => q.status === 'Rejected').length,
-      totalValue: allQuotations.reduce((sum, q) => sum + (q.grandTotal || 0), 0)
+      total: 0, draft: 0, sent: 0, approved: 0, converted: 0, rejected: 0,
+      totalValue: 0
     };
+
+    aggResult.forEach(g => {
+      stats.total += g.count;
+      stats.totalValue += g.totalValue;
+      const statusKey = g._id.toLowerCase();
+      if (stats[statusKey] !== undefined) {
+        stats[statusKey] = g.count;
+      }
+    });
 
     res.json({
       success: true,
@@ -101,7 +112,7 @@ const getQuotationById = async (req, res) => {
 // @desc    Create a new quotation with auto-generated ID and computed totals
 const createQuotation = async (req, res) => {
   try {
-    const cleanPayload = sanitizePayload(req.body);
+    const cleanPayload = sanitizePayload(req.body, ['customer', 'lead', 'assignedSupervisor']);
     const quotationId = await generateQuotationId();
 
     // Calculate totals
@@ -109,7 +120,8 @@ const createQuotation = async (req, res) => {
       cleanPayload.items,
       cleanPayload.transportCharges || 0,
       cleanPayload.labourCharges || 0,
-      cleanPayload.taxRate || 18
+      cleanPayload.taxRate || 18,
+      cleanPayload.discount || 0
     );
 
     const quotation = await Quotation.create({
@@ -154,7 +166,7 @@ const updateQuotation = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Cannot edit a converted quotation' });
     }
 
-    const cleanPayload = sanitizePayload(req.body);
+    const cleanPayload = sanitizePayload(req.body, ['customer', 'lead', 'assignedSupervisor']);
 
     // Recalculate totals if items changed
     if (cleanPayload.items) {
@@ -162,7 +174,8 @@ const updateQuotation = async (req, res) => {
         cleanPayload.items,
         cleanPayload.transportCharges ?? quotation.transportCharges,
         cleanPayload.labourCharges ?? quotation.labourCharges,
-        cleanPayload.taxRate ?? quotation.taxRate
+        cleanPayload.taxRate ?? quotation.taxRate,
+        cleanPayload.discount ?? quotation.discount
       );
       cleanPayload.subtotal = subtotal;
       cleanPayload.taxAmount = taxAmount;

@@ -2,9 +2,9 @@ const mongoose = require('mongoose');
 const Reservation = require('../models/Reservation');
 const StockLock = require('../models/StockLock');
 const Booking = require('../models/Booking');
-const Warehouse = require('../models/Warehouse');
 const Item = require('../models/Item');
-const { getPeakLockedQty } = require('../services/stockService');
+
+const { getPeakLockedQty, checkMultiWarehouseAvailability } = require('../services/stockService');
 
 /**
  * 1. Initialize Reservation from Booking
@@ -22,9 +22,9 @@ exports.createReservation = async (req, res, next) => {
     if (existing) return res.status(400).json({ success: false, message: 'Reservation already exists for this booking' });
 
     const itemsToReserve = booking.items.map(bItem => ({
-      item: bItem.item._id || bItem.item,
-      name: bItem.name || bItem.item?.name || 'Unknown Item',
-      code: bItem.code || bItem.item?.code || 'UNKNOWN',
+      item: bItem.item?._id || bItem.item || null,
+      name: bItem.itemName || bItem.name || bItem.item?.name || 'Unknown Item',
+      code: bItem.itemCode || bItem.code || bItem.item?.code || 'CUSTOM',
       requestedQty: bItem.qty || bItem.quantity || 0,
       lockedQty: 0,
       isFullyLocked: false,
@@ -59,54 +59,45 @@ exports.suggestSplit = async (req, res, next) => {
     const reservation = await Reservation.findById(reservationId);
     if (!reservation) return res.status(404).json({ success: false, message: 'Reservation not found' });
 
-    // Fetch all warehouses
-    const warehouses = await Warehouse.find({ isDeleted: false }).sort({ createdAt: 1 }); // Assuming first created is Main godown
-    
+    // Build request payload for bulk availability check (filter out custom line items)
+    const itemsToCheck = reservation.items
+      .filter(ri => ri.item)
+      .map(ri => ({
+        item: ri.item,
+        quantity: ri.requestedQty
+      }));
+
+    // Fetch multi-warehouse availability in parallel
+    const availabilityData = await checkMultiWarehouseAvailability(
+      itemsToCheck,
+      reservation.eventStartDate,
+      reservation.eventEndDate,
+      reservation.bookingId
+    );
+
     const suggestions = [];
 
-    // For each item, we need to find overlapping locks across all bookings
-    for (const resItem of reservation.items) {
-      const item = await Item.findById(resItem.item);
-      const totalRequested = resItem.requestedQty;
-      let remainingToFulfill = totalRequested;
+    for (const avail of availabilityData) {
+      let remainingToFulfill = avail.requestedQty;
       
       const itemSplit = {
-        itemId: item._id,
-        name: item.name,
-        code: item.code,
-        requested: totalRequested,
+        itemId: avail.itemId,
+        name: avail.itemName,
+        code: avail.itemCode,
+        requested: avail.requestedQty,
         splits: [],
         canFulfill: false
       };
 
-      // Greedy allocation through warehouses
-      for (const warehouse of warehouses) {
+      // Greedy allocation based on availability
+      for (const wh of avail.warehouses) {
         if (remainingToFulfill <= 0) break;
 
-        // 1. Get Base Stock from Item warehouseStock array
-        const whStock = (item.warehouseStock || []).find(
-          ws => ws.warehouse.toString() === warehouse._id.toString()
-        );
-        const physicalStock = whStock ? whStock.quantity : 0;
-        const dispatched = whStock ? (whStock.dispatched || 0) : 0;
-        const damaged = whStock ? (whStock.damaged || 0) : 0;
-
-        // 2. Query peak overlapping locks (excluding this reservation's own bookingId)
-        const peakLocked = await getPeakLockedQty(
-          item._id,
-          warehouse._id,
-          reservation.eventStartDate,
-          reservation.eventEndDate,
-          reservation.bookingId
-        );
-
-        const availableHere = Math.max(0, physicalStock - peakLocked - dispatched - damaged);
-
-        if (availableHere > 0) {
-          const allocateQty = Math.min(availableHere, remainingToFulfill);
+        if (wh.available > 0) {
+          const allocateQty = Math.min(wh.available, remainingToFulfill);
           itemSplit.splits.push({
-            warehouseId: warehouse._id,
-            warehouseName: warehouse.name,
+            warehouseId: wh.warehouseId,
+            warehouseName: wh.warehouseName,
             allocateQty,
           });
           remainingToFulfill -= allocateQty;
@@ -150,7 +141,7 @@ exports.lockStock = async (req, res, next) => {
     // Process each user-confirmed lock allocation
     for (const lockReq of locks) {
       // Validation to ensure we don't exceed what was originally requested
-      const resItem = reservation.items.find(i => i.item.toString() === lockReq.itemId);
+      const resItem = reservation.items.find(i => i.item && i.item.toString() === lockReq.itemId);
       if (!resItem) throw new Error(`Item ${lockReq.itemId} not in reservation`);
 
       // Retrieve actual item and check current live availability

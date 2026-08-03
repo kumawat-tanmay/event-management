@@ -1,0 +1,3013 @@
+{
+  "info": {
+    "_postman_id": "krishna-event-erp-api-id",
+    "name": "Krishna Event ERP API",
+    "description": "Postman Collection for Krishna Event ERP backend APIs. Includes authentication, CRM, bookings, quotations, logistics, HR, inventory, and finance endpoints.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Authentication (Auth)",
+      "item": [
+        {
+          "name": "CSRF Token",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/csrf-token",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "csrf-token"
+              ]
+            },
+            "description": "Get CSRF secret cookie and XSRF-TOKEN for requests."
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var responseJson = pm.response.json();",
+                  "    if (responseJson && responseJson.data && responseJson.data.token) {",
+                  "        pm.collectionVariables.set(\"token\", responseJson.data.token);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Logs in a user and automatically stores the JWT token in collection variables."
+          }
+        },
+        {
+          "name": "Google Auth",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"google-access-token-string\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/google",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "google"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Forgot Password",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/forgotpassword",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "forgotpassword"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"password\": \"newsecurepassword123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/resetpassword/:resettoken",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "resetpassword",
+                ":resettoken"
+              ],
+              "variable": [
+                {
+                  "key": "resettoken",
+                  "value": "token-from-email"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Me (Profile)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ]
+            },
+            "description": "Get logged-in user profile details."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Roles & Permissions",
+      "item": [
+        {
+          "name": "Get Roles",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/roles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "roles"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Role",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Event Coordinator\",\n  \"permissions\": [\n    \"bookings.view\",\n    \"bookings.update\",\n    \"crm.view\"\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/roles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "roles"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Role",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Coordinator Role Name\",\n  \"permissions\": [\n    \"bookings.view\",\n    \"bookings.update\",\n    \"crm.view\",\n    \"crm.update\"\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/roles/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "roles",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "role_id_here"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Role",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/roles/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "roles",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "role_id_here"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Get Users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Invite User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"johndoe@example.com\",\n  \"role\": \"Manager\",\n  \"warehouseId\": \"optional_warehouse_id\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users/invite",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "invite"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "CRM (Leads & Customers)",
+      "item": [
+        {
+          "name": "Customers",
+          "item": [
+            {
+              "name": "Get Customers",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/crm/customers",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "crm",
+                    "customers"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Get Customer by ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/crm/customers/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "crm",
+                    "customers",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "customer_id_here"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Create Customer",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Rahul Sharma\",\n  \"phone\": \"9876543210\",\n  \"email\": \"rahul@example.com\",\n  \"address\": \"Jaipur, Rajasthan\",\n  \"companyName\": \"Sharma Decorators\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/crm/customers",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "crm",
+                    "customers"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Update Customer",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Rahul Sharma (Updated)\",\n  \"phone\": \"9876543211\",\n  \"address\": \"New Address, Jaipur\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/crm/customers/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "crm",
+                    "customers",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "customer_id_here"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Delete Customer",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/crm/customers/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "crm",
+                    "customers",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "customer_id_here"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Leads",
+          "item": [
+            {
+              "name": "Get Leads",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/crm/leads",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "crm",
+                    "leads"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Get Lead by ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/crm/leads/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "crm",
+                    "leads",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "lead_id_here"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Create Lead",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"customerName\": \"Vikas Gupta\",\n  \"phone\": \"9123456789\",\n  \"email\": \"vikas@example.com\",\n  \"source\": \"Reference\",\n  \"eventDate\": \"2026-11-20T10:00:00.000Z\",\n  \"eventType\": \"Wedding\",\n  \"venue\": \"Rambagh Palace, Jaipur\",\n  \"requirements\": \"High-end sound system, decor layout, stages\",\n  \"budget\": 500000,\n  \"status\": \"New\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/crm/leads",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "crm",
+                    "leads"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Update Lead",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"Contacted\",\n  \"requirements\": \"Stage, Sound System, & Special Lighting\",\n  \"budget\": 550000\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/crm/leads/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "crm",
+                    "leads",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "lead_id_here"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Delete Lead",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/crm/leads/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "crm",
+                    "leads",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "lead_id_here"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Site Visits",
+          "item": [
+            {
+              "name": "Get Site Visits",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/crm/site-visits",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "crm",
+                    "site-visits"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Get Site Visit by ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/crm/site-visits/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "crm",
+                    "site-visits",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "visit_id_here"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Create Site Visit",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"lead\": \"lead_id_here\",\n  \"visitDate\": \"2026-08-10T11:00:00.000Z\",\n  \"venue\": \"Hotel Clark Amer, Jaipur\",\n  \"status\": \"Scheduled\",\n  \"remarks\": \"Verify stage setup capacity and height of entrance gate\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/crm/site-visits",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "crm",
+                    "site-visits"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Update Site Visit",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"Completed\",\n  \"remarks\": \"Entrance height is 12ft, stage area is 40x20ft.\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/crm/site-visits/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "crm",
+                    "site-visits",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "visit_id_here"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Quotations",
+      "item": [
+        {
+          "name": "Check Stock",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventStartDate\": \"2026-08-25T08:00:00.000Z\",\n  \"eventEndDate\": \"2026-08-27T20:00:00.000Z\",\n  \"items\": [\n    {\n      \"item\": \"item_id_here\",\n      \"quantity\": 50\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/quotations/check-stock",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "quotations",
+                "check-stock"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Quotations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/quotations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "quotations"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Quotation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customer\": \"customer_id_here\",\n  \"lead\": \"optional_lead_id_here\",\n  \"eventTitle\": \"Royale Wedding Ceremony\",\n  \"eventType\": \"Wedding\",\n  \"eventStartDate\": \"2026-11-20T08:00:00.000Z\",\n  \"eventEndDate\": \"2026-11-22T20:00:00.000Z\",\n  \"venueAddress\": \"Vrindavan Gardens, Sikar Road, Jaipur\",\n  \"items\": [\n    {\n      \"item\": \"item_id_here\",\n      \"itemName\": \"German Hanger Stage Structure\",\n      \"itemCode\": \"GH-STAGE-01\",\n      \"unit\": \"Nos\",\n      \"rentalRate\": 15000,\n      \"quantity\": 1,\n      \"duration\": 3,\n      \"discount\": 5,\n      \"totalAmount\": 42750\n    }\n  ],\n  \"subtotal\": 45000,\n  \"transportCharges\": 5000,\n  \"labourCharges\": 3000,\n  \"taxRate\": 18,\n  \"taxAmount\": 9135,\n  \"grandTotal\": 59885,\n  \"termsAndConditions\": \"50% advance, balance before dispatch.\",\n  \"validUntil\": \"2026-09-01T23:59:59.000Z\",\n  \"notes\": \"Client requires German Hanger setup.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/quotations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "quotations"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Quotation by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/quotations/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "quotations",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "quotation_id_here"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Quotation",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"Approved\",\n  \"notes\": \"Client approved quotation with 5% discount.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/quotations/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "quotations",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "quotation_id_here"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Convert to Booking",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/quotations/:id/convert-booking",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "quotations",
+                ":id",
+                "convert-booking"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "quotation_id_here"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Quotation",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/quotations/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "quotations",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "quotation_id_here"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Bookings",
+      "item": [
+        {
+          "name": "Get Bookings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "bookings"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Booking",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quotation\": \"optional_quotation_id_here\",\n  \"customer\": \"customer_id_here\",\n  \"eventTitle\": \"Wedding Setup\",\n  \"eventType\": \"Wedding\",\n  \"eventStartDate\": \"2026-11-20T08:00:00.000Z\",\n  \"eventEndDate\": \"2026-11-22T20:00:00.000Z\",\n  \"venueAddress\": \"Vrindavan Gardens, Jaipur\",\n  \"items\": [\n    {\n      \"item\": \"item_id_here\",\n      \"itemName\": \"German Hanger Structure\",\n      \"itemCode\": \"GH-01\",\n      \"unit\": \"Nos\",\n      \"rentalRate\": 15000,\n      \"quantity\": 1,\n      \"duration\": 3,\n      \"discount\": 0,\n      \"totalAmount\": 45000\n    }\n  ],\n  \"subtotal\": 45000,\n  \"transportCharges\": 5000,\n  \"labourCharges\": 3000,\n  \"taxRate\": 18,\n  \"taxAmount\": 9540,\n  \"grandTotal\": 62540,\n  \"advanceRequired\": 30000,\n  \"advancePaid\": 30000,\n  \"assignedSupervisor\": \"supervisor_staff_id_here\",\n  \"notes\": \"Booked direct.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "bookings"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Booking by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/bookings/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "bookings",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "booking_id_here"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Booking",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"Planning\",\n  \"assignedSupervisor\": \"new_supervisor_id_here\",\n  \"notes\": \"Updated supervisor assignment\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/bookings/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "bookings",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "booking_id_here"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Sign Agreement",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/bookings/:id/agreement",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "bookings",
+                ":id",
+                "agreement"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "booking_id_here"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Booking",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/bookings/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "bookings",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "booking_id_here"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Inventory & Warehouses",
+      "item": [
+        {
+          "name": "Warehouses",
+          "item": [
+            {
+              "name": "Get Warehouses",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/warehouses",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "warehouses"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Get Warehouse by ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/warehouses/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "warehouses",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "warehouse_id_here"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Create Warehouse",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Main Godown Sikar Rd\",\n  \"code\": \"MGD-01\",\n  \"location\": \"Jaipur\",\n  \"address\": \"Plot 12, Sikar Road Industrial Area, Jaipur\",\n  \"capacity\": 50000,\n  \"incharge\": \"Suraj Singh\",\n  \"isDefault\": true,\n  \"isActive\": true,\n  \"zones\": [\n    {\n      \"name\": \"Heavy Structures Zone\",\n      \"code\": \"HZ-01\",\n      \"racks\": [\n        {\n          \"name\": \"Rack A1\",\n          \"capacity\": \"5000kg\"\n        }\n      ]\n    }\n  ]\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/warehouses",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "warehouses"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Bulk Import Layout",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"zones\": [\n    {\n      \"name\": \"Zone C\",\n      \"code\": \"ZC\",\n      \"racks\": [\n        {\n          \"name\": \"Rack C1\"\n        },\n        {\n          \"name\": \"Rack C2\"\n        }\n      ]\n    }\n  ]\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/warehouses/:id/bulk-import-layout",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "warehouses",
+                    ":id",
+                    "bulk-import-layout"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "warehouse_id_here"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Update Warehouse",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"capacity\": 60000,\n  \"incharge\": \"Suraj Singh Updated\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/warehouses/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "warehouses",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "warehouse_id_here"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Delete Warehouse",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/warehouses/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "warehouses",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "warehouse_id_here"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Categories",
+          "item": [
+            {
+              "name": "Get Categories",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/inventory/categories",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "inventory",
+                    "categories"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Create Category",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Tent & Hanger Structures\",\n  \"code\": \"TENT\",\n  \"description\": \"German hanger pipes, canvas roofs, sidewalls, structures\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/inventory/categories",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "inventory",
+                    "categories"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Get Category by ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/inventory/categories/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "inventory",
+                    "categories",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "category_id_here"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Update Category",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Tent, Hanger & Truss Structures\",\n  \"description\": \"Updated category description\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/inventory/categories/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "inventory",
+                    "categories",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "category_id_here"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Delete Category",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/inventory/categories/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "inventory",
+                    "categories",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "category_id_here"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Items",
+          "item": [
+            {
+              "name": "Get Items",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/inventory/items",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "inventory",
+                    "items"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Create Item",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"10m Truss Pipe Standard\",\n  \"code\": \"TRUSS-10M\",\n  \"category\": \"category_id_here\",\n  \"description\": \"Aluminium structural pipe for truss hanging\",\n  \"unit\": \"Nos\",\n  \"rentalPrice\": 500,\n  \"purchaseCost\": 8000,\n  \"minStockAlert\": 10,\n  \"isActive\": true\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/inventory/items",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "inventory",
+                    "items"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Get Item by ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/inventory/items/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "inventory",
+                    "items",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "item_id_here"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Update Item",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"rentalPrice\": 600,\n  \"minStockAlert\": 15\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/inventory/items/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "inventory",
+                    "items",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "item_id_here"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Add Opening Stock",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"warehouseId\": \"warehouse_id_here\",\n  \"initialQty\": 100,\n  \"locationInfo\": \"Rack A1, Zone 1\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/inventory/items/:id/opening-stock",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "inventory",
+                    "items",
+                    ":id",
+                    "opening-stock"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "item_id_here"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Adjust Stock Quantity",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"warehouseId\": \"warehouse_id_here\",\n  \"qty\": -2,\n  \"reason\": \"Damaged during event return\",\n  \"type\": \"lost\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/inventory/items/:id/adjust-stock",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "inventory",
+                    "items",
+                    ":id",
+                    "adjust-stock"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "item_id_here"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Delete Item",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/inventory/items/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "inventory",
+                    "items",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "item_id_here"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ledger",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/inventory/ledger",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "inventory",
+                "ledger"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Logistics (Dispatches & Transfers)",
+      "item": [
+        {
+          "name": "Dispatches",
+          "item": [
+            {
+              "name": "Get Dispatches",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/dispatches",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "dispatches"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Get Dispatch by ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/dispatches/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "dispatches",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "dispatch_id_here"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Create Dispatch",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"bookingId\": \"booking_id_here\",\n  \"warehouseId\": \"warehouse_id_here\",\n  \"driverName\": \"Rakesh Kumar\",\n  \"driverPhone\": \"9876543210\",\n  \"vehicleNumber\": \"RJ-14-GD-1234\",\n  \"gatePassNumber\": \"GP-87364\",\n  \"items\": [\n    {\n      \"item\": \"item_id_here\",\n      \"name\": \"10m Truss Pipe Standard\",\n      \"code\": \"TRUSS-10M\",\n      \"dispatchedQty\": 20\n    }\n  ]\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/dispatches",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "dispatches"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Update Dispatch",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"bookingId\": \"booking_id_here\",\n  \"warehouseId\": \"warehouse_id_here\",\n  \"driverName\": \"Rakesh Kumar\",\n  \"driverPhone\": \"9876543210\",\n  \"vehicleNumber\": \"RJ-14-GD-9999\",\n  \"items\": [\n    {\n      \"item\": \"item_id_here\",\n      \"name\": \"10m Truss Pipe Standard\",\n      \"dispatchedQty\": 20\n    }\n  ]\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/dispatches/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "dispatches",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "dispatch_id_here"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Update Dispatch Status",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"dispatched\",\n  \"remarks\": \"Dispatched successfully at 10 AM\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/dispatches/:id/status",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "dispatches",
+                    ":id",
+                    "status"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "dispatch_id_here"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Delete Dispatch",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/dispatches/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "dispatches",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "dispatch_id_here"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Warehouse Transfers",
+          "item": [
+            {
+              "name": "Get Transfers",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/warehouse-transfers",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "warehouse-transfers"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Get Transfer by ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/warehouse-transfers/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "warehouse-transfers",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "transfer_id_here"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Create Transfer",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"fromWarehouse\": \"warehouse_from_id_here\",\n  \"toWarehouse\": \"warehouse_to_id_here\",\n  \"remarks\": \"Transferring standard truss pipes for stock balance\",\n  \"items\": [\n    {\n      \"item\": \"item_id_here\",\n      \"name\": \"10m Truss Pipe Standard\",\n      \"code\": \"TRUSS-10M\",\n      \"quantity\": 10\n    }\n  ]\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/warehouse-transfers",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "warehouse-transfers"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Update Transfer",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"fromWarehouse\": \"warehouse_from_id_here\",\n  \"toWarehouse\": \"warehouse_to_id_here\",\n  \"remarks\": \"Updated remarks\",\n  \"items\": [\n    {\n      \"item\": \"item_id_here\",\n      \"name\": \"10m Truss Pipe Standard\",\n      \"quantity\": 12\n    }\n  ]\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/warehouse-transfers/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "warehouse-transfers",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "transfer_id_here"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Approve and Dispatch Transfer",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/warehouse-transfers/:id/approve",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "warehouse-transfers",
+                    ":id",
+                    "approve"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "transfer_id_here"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Receive Transfer at Destination",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/warehouse-transfers/:id/receive",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "warehouse-transfers",
+                    ":id",
+                    "receive"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "transfer_id_here"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Cancel Transfer",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/warehouse-transfers/:id/cancel",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "warehouse-transfers",
+                    ":id",
+                    "cancel"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "transfer_id_here"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Delete Transfer",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/warehouse-transfers/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "warehouse-transfers",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "transfer_id_here"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Event Execution",
+      "item": [
+        {
+          "name": "Get Executions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/event-execution",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "event-execution"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Executions by Booking",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/event-execution/booking/:bookingId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "event-execution",
+                "booking",
+                ":bookingId"
+              ],
+              "variable": [
+                {
+                  "key": "bookingId",
+                  "value": "booking_id_here"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Site Receipt",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bookingId\": \"booking_id_here\",\n  \"receivedItems\": [\n    {\n      \"item\": \"item_id_here\",\n      \"quantity\": 20\n    }\n  ],\n  \"remarks\": \"Received all items on site.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/event-execution/site-receipt",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "event-execution",
+                "site-receipt"
+              ]
+            },
+            "description": "Site receipt when materials arrive at the event venue. Supports multipart/form-data for photos."
+          }
+        },
+        {
+          "name": "Create Site Verification",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bookingId\": \"booking_id_here\",\n  \"status\": \"Verified\",\n  \"remarks\": \"Germany hanger fully installed and checked.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/event-execution/site-verification",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "event-execution",
+                "site-verification"
+              ]
+            },
+            "description": "Site verification and progress check. Supports uploading photos."
+          }
+        },
+        {
+          "name": "Return and Settle Event Materials",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bookingId\": \"booking_id_here\",\n  \"returnedItems\": [\n    {\n      \"item\": \"item_id_here\",\n      \"returnedQty\": 18,\n      \"missingQty\": 2,\n      \"damagedQty\": 0\n    }\n  ],\n  \"remarks\": \"2 pipes missing.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/event-execution/return-settle",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "event-execution",
+                "return-settle"
+              ]
+            },
+            "description": "Materials return back to warehouse and execution closure. Supports uploading photos."
+          }
+        }
+      ]
+    },
+    {
+      "name": "HR & Staff",
+      "item": [
+        {
+          "name": "Staff",
+          "item": [
+            {
+              "name": "Get Staff",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/hr/staff",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "hr",
+                    "staff"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Get Staff by ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/hr/staff/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "hr",
+                    "staff",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "staff_id_here"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Create Staff",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Ram Chandra\",\n  \"phone\": \"9632587410\",\n  \"email\": \"ram@example.com\",\n  \"role\": \"Event Supervisor\",\n  \"joinedDate\": \"2026-05-01T00:00:00.000Z\",\n  \"compensationType\": \"daily\",\n  \"basePay\": 800,\n  \"status\": \"Active\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/hr/staff",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "hr",
+                    "staff"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Update Staff",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"basePay\": 900,\n  \"status\": \"On Leave\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/hr/staff/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "hr",
+                    "staff",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "staff_id_here"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Log Payment / Salary",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"amount\": 5000,\n  \"type\": \"Salary\",\n  \"mode\": \"UPI\",\n  \"notes\": \"Payment for first week of August\",\n  \"newPendingDues\": 0\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/hr/staff/:id/pay",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "hr",
+                    "staff",
+                    ":id",
+                    "pay"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "staff_id_here"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Delete Staff",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/hr/staff/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "hr",
+                    "staff",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "staff_id_here"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Vehicles",
+          "item": [
+            {
+              "name": "Get Vehicles",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/hr/vehicles",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "hr",
+                    "vehicles"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Get Vehicle by ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/hr/vehicles/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "hr",
+                    "vehicles",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "vehicle_id_here"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Create Vehicle",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Tata Ace Gold\",\n  \"plateNumber\": \"RJ-14-ED-5678\",\n  \"type\": \"Tata Ace\",\n  \"capacity\": \"1.5 Ton\",\n  \"status\": \"available\",\n  \"ownership\": \"company\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/hr/vehicles",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "hr",
+                    "vehicles"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Update Vehicle",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"on_dispatch\",\n  \"assignedDriverId\": \"staff_id_of_driver_here\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/hr/vehicles/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "hr",
+                    "vehicles",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "vehicle_id_here"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Delete Vehicle",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/hr/vehicles/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "hr",
+                    "vehicles",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "vehicle_id_here"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Reservations",
+      "item": [
+        {
+          "name": "Get All Reservations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/reservations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "reservations"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Reservation by Booking ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/reservations/booking/:bookingId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "reservations",
+                "booking",
+                ":bookingId"
+              ],
+              "variable": [
+                {
+                  "key": "bookingId",
+                  "value": "booking_id_here"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Reservation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bookingId\": \"booking_id_here\",\n  \"items\": [\n    {\n      \"item\": \"item_id_here\",\n      \"qty\": 30\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/reservations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "reservations"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Suggest Split Reservation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reservationId\": \"reservation_id_here\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/reservations/suggest-split",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "reservations",
+                "suggest-split"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Lock Stock for Reservation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"locks\": [\n    {\n      \"itemId\": \"item_id_here\",\n      \"warehouseId\": \"warehouse_id_here\",\n      \"qty\": 30\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/reservations/:reservationId/lock",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "reservations",
+                ":reservationId",
+                "lock"
+              ],
+              "variable": [
+                {
+                  "key": "reservationId",
+                  "value": "reservation_id_here"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Release Stock Reservation",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/reservations/:reservationId/release",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "reservations",
+                ":reservationId",
+                "release"
+              ],
+              "variable": [
+                {
+                  "key": "reservationId",
+                  "value": "reservation_id_here"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Finance & Accounts",
+      "item": [
+        {
+          "name": "Get Cashbook",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/finance/cashbook",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "finance",
+                "cashbook"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Bankbook",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/finance/bankbook",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "finance",
+                "bankbook"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Profit and Loss Statement",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/finance/profit-loss",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "finance",
+                "profit-loss"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Payments",
+          "item": [
+            {
+              "name": "Get Payments",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/payments",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "payments"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Get Payment by ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/payments/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "payments",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "payment_id_here"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Create Payment",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"booking\": \"booking_id_here\",\n  \"amount\": 25000,\n  \"paymentDate\": \"2026-08-01T12:00:00.000Z\",\n  \"paymentMethod\": \"UPI\",\n  \"referenceNumber\": \"UPI-938749287498\",\n  \"receivedBy\": \"Suraj Singh\",\n  \"status\": \"Completed\",\n  \"notes\": \"Second advance payment installment.\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/payments",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "payments"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Delete Payment",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/payments/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "payments",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "payment_id_here"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Expenses",
+          "item": [
+            {
+              "name": "Get Expenses",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/expenses",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "expenses"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Get Expense by ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/expenses/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "expenses",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "expense_id_here"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Create Expense",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"Diesel for Pickup 407\",\n  \"category\": \"Fuel\",\n  \"amount\": 2200,\n  \"expenseDate\": \"2026-08-01T10:00:00.000Z\",\n  \"paymentMode\": \"Cash\",\n  \"paidTo\": \"Ramesh Petrol Pump\",\n  \"referenceNumber\": \"PETROL-983\",\n  \"description\": \"Fuel refill for booking event transport.\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/expenses",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "expenses"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Delete Expense",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/expenses/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "expenses",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "expense_id_here"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Invoices",
+          "item": [
+            {
+              "name": "Get Invoices",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/invoices",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "invoices"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Get Invoice by ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/invoices/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "invoices",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "invoice_id_here"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Generate Invoice",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"booking\": \"booking_id_here\",\n  \"invoiceDate\": \"2026-08-01T12:00:00.000Z\",\n  \"dueDate\": \"2026-08-15T23:59:59.000Z\",\n  \"discount\": 0,\n  \"notes\": \"Please pay within 15 days.\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/invoices/generate",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "invoices",
+                    "generate"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Delete Invoice",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/invoices/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "invoices",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "invoice_id_here"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Dashboard, Reports & Audits",
+      "item": [
+        {
+          "name": "Get Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "health"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Dashboard Statistics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/dashboard/stats",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "dashboard",
+                "stats"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Audit Logs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/audit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "audit"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Report by Type",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/reports/:reportType",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "reports",
+                ":reportType"
+              ],
+              "variable": [
+                {
+                  "key": "reportType",
+                  "value": "inventory-status",
+                  "description": "Report type, e.g. inventory-status, active-bookings, financial-summary"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}

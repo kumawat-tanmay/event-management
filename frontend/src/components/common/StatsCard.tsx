@@ -5,11 +5,12 @@ import { cn } from '@/utils/cn';
 interface StatsCardProps {
   title: string;
   value: string | number;
-  subtitle?: string; // Will be used as the top-right badge text now
+  subtitle?: string;
   icon: LucideIcon;
   colorTheme?: 'primary' | 'secondary' | 'success' | 'warning' | 'error' | 'blue' | 'yellow' | 'purple' | 'green' | 'orange';
 }
 
+// ponytail: pure CSS hover, no framer-motion dependency
 export function StatsCard({ 
   title, 
   value, 
@@ -35,10 +36,15 @@ export function StatsCard({
   const theme = getThemeStyles();
 
   return (
-    <div className={cn("bg-card p-4 sm:p-5 rounded-2xl shadow-sm border-y border-r border-border border-l-4 flex flex-col hover:shadow-md transition-shadow h-full", theme.border)}>
+    <div 
+      className={cn(
+        "bg-card p-4 sm:p-5 rounded-2xl shadow-sm border-y border-r border-border border-l-4 flex flex-col hover:shadow-xl hover:-translate-y-1 transition-all duration-300 h-full group",
+        theme.border
+      )}
+    >
       {/* Top Row: Icon and Badge */}
       <div className="flex justify-between items-start mb-4">
-        <div className={cn("w-10 h-10 sm:w-11 sm:h-11 shrink-0 rounded-xl flex items-center justify-center", theme.bgLight, theme.text)}>
+        <div className={cn("w-10 h-10 sm:w-11 sm:h-11 shrink-0 rounded-xl flex items-center justify-center transition-transform duration-200 group-hover:scale-110 group-hover:rotate-3", theme.bgLight, theme.text)}>
           <Icon className="w-5 h-5 sm:w-5 sm:h-5" />
         </div>
         
@@ -50,10 +56,24 @@ export function StatsCard({
       </div>
       
       {/* Middle Row: Title */}
-      <h3 className="text-xs sm:text-sm font-medium text-muted-foreground mb-1 leading-tight">{title}</h3>
+      <h3 className="text-xs sm:text-sm font-medium text-muted-foreground mb-1 leading-tight group-hover:text-foreground transition-colors">{title}</h3>
       
       {/* Bottom Row: Value */}
-      <p className="text-2xl sm:text-3xl font-display font-black text-foreground leading-none truncate">{value}</p>
+      <p className="text-2xl sm:text-3xl font-display font-black text-foreground leading-none truncate">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+export function StatsCardSkeleton() {
+  return (
+    <div className="bg-card p-4 sm:p-5 rounded-2xl shadow-sm border border-border flex flex-col h-full">
+      <div className="flex justify-between items-start mb-4">
+        <div className="w-10 h-10 sm:w-11 sm:h-11 shrink-0 rounded-xl bg-muted/60 animate-pulse" />
+      </div>
+      <div className="h-4 w-1/2 bg-muted/60 animate-pulse rounded mb-2" />
+      <div className="h-8 w-1/3 bg-muted/60 animate-pulse rounded mt-auto" />
     </div>
   );
 }

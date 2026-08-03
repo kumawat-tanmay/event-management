@@ -14,6 +14,7 @@ import { PageHeader } from '@/components/common/PageHeader';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { ConfirmModal } from '@/components/common/ConfirmModal';
 import { crmService, Lead, SiteVisit } from '@/lib/services/crm.services';
+import { ActionGuard } from '@/components/auth/ActionGuard';
 
 const PIPELINE_STAGES: ('New' | 'Contacted' | 'Site Visit' | 'Quotation' | 'Booked' | 'Lost')[] = [
   'New', 'Contacted', 'Site Visit', 'Quotation', 'Booked'
@@ -116,14 +117,18 @@ export function LeadDetailView() {
           />
         </div>
         <div className="flex items-center gap-2 shrink-0 mt-2">
-          <Button variant="outline" size="sm" onClick={() => router.push(`/crm/leads/${lead._id}/edit`)}>
-            <Edit className="w-4 h-4 mr-2" />
-            {t('crm.editLead')}
-          </Button>
-          <Button variant="danger" size="sm" onClick={() => setDeleteModalOpen(true)}>
-            <Trash2 className="w-4 h-4 mr-2" />
-            {t('crm.delete')}
-          </Button>
+          <ActionGuard permission="crm.update">
+            <Button variant="outline" size="sm" onClick={() => router.push(`/crm/leads/${lead._id}/edit`)}>
+              <Edit className="w-4 h-4 mr-2" />
+              {t('crm.editLead')}
+            </Button>
+          </ActionGuard>
+          <ActionGuard permission="crm.delete">
+            <Button variant="danger" size="sm" onClick={() => setDeleteModalOpen(true)}>
+              <Trash2 className="w-4 h-4 mr-2" />
+              {t('crm.delete')}
+            </Button>
+          </ActionGuard>
         </div>
       </div>
 

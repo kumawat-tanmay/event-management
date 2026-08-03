@@ -26,7 +26,7 @@ const reservationSchema = new mongoose.Schema(
         item: {
           type: mongoose.Schema.Types.ObjectId,
           ref: 'Item',
-          required: true,
+          required: false,
         },
         name: { type: String, required: true },
         code: { type: String, required: true },

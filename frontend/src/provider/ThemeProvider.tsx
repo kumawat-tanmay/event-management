@@ -8,11 +8,11 @@ function ThemeColorUpdater() {
 
   React.useEffect(() => {
     if (!resolvedTheme) return;
-    
-    // Adapted to Krishna ERP Theme Colors
-    // Dark mode: Zinc 900 (#18181B)
-    // Light mode: Canvas Light (#F8F9FA)
-    const color = resolvedTheme === 'dark' ? '#18181B' : '#F8F9FA';
+
+    // Adapted to Krishna ERP Primary Brand Theme Colors (globals.css)
+    // Dark mode: Primary Dark Brown (#c28854)
+    // Light mode: Primary Warm Chestnut Brown (#8a5a32)
+    const color = resolvedTheme === 'dark' ? '#c28854' : '#8a5a32';
 
     let metaThemeColor = document.querySelector('meta[name="theme-color"]');
     if (!metaThemeColor) {

@@ -12,16 +12,16 @@ const getWarehouses = async (req, res) => {
       .populate('createdBy', 'name email')
       .sort({ isDefault: -1, createdAt: 1 })
       .lean();
-    const itemsCount = await Item.aggregate([
+    const warehouseTotals = await Item.aggregate([
       { $match: { isDeleted: false } },
       { $unwind: "$warehouseStock" },
-      { $group: { _id: "$warehouseStock.warehouse", totalItems: { $sum: "$warehouseStock.quantity" } } }
+      { $group: { _id: "$warehouseStock.warehouse", totalQty: { $sum: "$warehouseStock.quantity" } } }
     ]);
 
-    const countMap = itemsCount.reduce((acc, curr) => {
-      acc[curr._id.toString()] = curr.totalItems;
-      return acc;
-    }, {});
+    const countMap = {};
+    warehouseTotals.forEach(wt => {
+      if (wt._id) countMap[wt._id.toString()] = wt.totalQty;
+    });
 
     const dataWithCounts = warehouses.map((wh) => ({
       ...wh,
@@ -190,6 +190,20 @@ const deleteWarehouse = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Warehouse not found' });
     }
 
+    // Block deletion if warehouse has stock > 0
+    const itemsInWarehouse = await Item.findOne({ 
+      "warehouseStock.warehouse": warehouse._id, 
+      "warehouseStock.quantity": { $gt: 0 },
+      isDeleted: false 
+    }).lean();
+
+    if (itemsInWarehouse) {
+      return res.status(400).json({ 
+        success: false, 
+        message: `Cannot delete warehouse containing physical stock (e.g., ${itemsInWarehouse.name}). Transfer stock first.` 
+      });
+    }
+
     const wasDefault = warehouse.isDefault;
     warehouse.isDeleted = true;
     warehouse.isDefault = false;
@@ -212,10 +226,93 @@ const deleteWarehouse = async (req, res) => {
   }
 };
 
+// @desc    Bulk import layout (zones & racks) into a warehouse
+// @route   POST /api/warehouses/:id/bulk-import-layout
+// @access  Private (warehouses.update)
+const bulkImportWarehouseLayout = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { zones = [], mode = 'merge' } = req.body;
+
+    if (!Array.isArray(zones)) {
+      return res.status(400).json({ success: false, message: 'Invalid zones array in payload' });
+    }
+
+    const warehouse = await Warehouse.findOne({ _id: id, isDeleted: false });
+    if (!warehouse) {
+      return res.status(404).json({ success: false, message: 'Warehouse not found' });
+    }
+
+    if (mode === 'replace') {
+      warehouse.zones = zones.map(z => ({
+        name: z.name ? String(z.name).trim() : 'Unnamed Zone',
+        description: z.description ? String(z.description).trim() : '',
+        racks: Array.isArray(z.racks) ? z.racks.map(r => ({
+          name: r.name ? String(r.name).trim() : 'Rack 1',
+          capacity: r.capacity ? String(r.capacity).trim() : '500',
+          description: r.description ? String(r.description).trim() : ''
+        })) : []
+      }));
+    } else {
+      // mode === 'merge'
+      const existingZones = JSON.parse(JSON.stringify(warehouse.zones || []));
+
+      zones.forEach(importZone => {
+        const importName = (importZone.name || '').trim();
+        if (!importName) return;
+
+        const matchIndex = existingZones.findIndex(ez => ez.name.toLowerCase() === importName.toLowerCase());
+
+        const importRacks = Array.isArray(importZone.racks) ? importZone.racks.map(r => ({
+          name: r.name ? String(r.name).trim() : 'Rack',
+          capacity: r.capacity ? String(r.capacity).trim() : '500',
+          description: r.description ? String(r.description).trim() : ''
+        })) : [];
+
+        if (matchIndex !== -1) {
+          const existingZone = existingZones[matchIndex];
+          if (!existingZone.racks) existingZone.racks = [];
+
+          importRacks.forEach(newRack => {
+            const rackExists = existingZone.racks.some(er => er.name.toLowerCase() === newRack.name.toLowerCase());
+            if (!rackExists) {
+              existingZone.racks.push(newRack);
+            }
+          });
+
+          if (importZone.description && !existingZone.description) {
+            existingZone.description = String(importZone.description).trim();
+          }
+        } else {
+          existingZones.push({
+            name: importName,
+            description: importZone.description ? String(importZone.description).trim() : '',
+            racks: importRacks
+          });
+        }
+      });
+
+      warehouse.zones = existingZones;
+    }
+
+    await warehouse.save();
+    res.json({
+      success: true,
+      message: `Layout imported successfully (${mode} mode)`,
+      data: warehouse
+    });
+  } catch (error) {
+    console.error('Error bulk importing warehouse layout:', error);
+    res.status(500).json({ success: false, message: error.message || 'Server Error' });
+  }
+};
+
 module.exports = {
   getWarehouses,
   getWarehouseById,
   createWarehouse,
   updateWarehouse,
-  deleteWarehouse
+  deleteWarehouse,
+  bulkImportWarehouseLayout
 };
+

@@ -142,7 +142,7 @@ export function ReservationView() {
           </Button>
           <Button variant="outline" onClick={() => mutate()} className="flex items-center justify-center gap-2">
             <RefreshCw className="w-4 h-4" />
-            {t('navbar.selectLanguage') !== 'Language' ? 'Refresh' : 'रिफ्रेश'}
+            Refresh
           </Button>
         </div>
       </div>

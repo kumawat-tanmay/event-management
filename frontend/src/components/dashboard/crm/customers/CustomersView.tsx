@@ -10,6 +10,7 @@ import { StatusBadge } from '@/components/common/StatusBadge';
 import { StatsCard } from '@/components/common/StatsCard';
 import { ConfirmModal } from '@/components/common/ConfirmModal';
 import { crmService, Customer } from '@/lib/services/crm.services';
+import { ActionGuard } from '@/components/auth/ActionGuard';
 
 export function CustomersView() {
   const { t } = useTranslation();
@@ -111,22 +112,26 @@ export function CustomersView() {
               <Eye className="w-4 h-4" />
             </Button>
           </Link>
-          <Link href={`/crm/customers/${row._id}/edit`}>
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors">
-              <Edit className="w-4 h-4" />
+          <ActionGuard permission="crm.update">
+            <Link href={`/crm/customers/${row._id}/edit`}>
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors">
+                <Edit className="w-4 h-4" />
+              </Button>
+            </Link>
+          </ActionGuard>
+          <ActionGuard permission="crm.delete">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => {
+                setCustomerToDelete(row._id);
+                setDeleteModalOpen(true);
+              }}
+              className="h-8 w-8 text-muted-foreground hover:text-error hover:bg-error/10 transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
             </Button>
-          </Link>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => {
-              setCustomerToDelete(row._id);
-              setDeleteModalOpen(true);
-            }}
-            className="h-8 w-8 text-muted-foreground hover:text-error hover:bg-error/10 transition-colors"
-          >
-            <Trash2 className="w-4 h-4" />
-          </Button>
+          </ActionGuard>
         </div>
       )
     },
@@ -144,12 +149,14 @@ export function CustomersView() {
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             {t('navbar.selectLanguage') !== 'Language' ? 'Refresh' : 'रिफ्रेश'}
           </Button>
-          <Link href="/crm/customers/new" className="flex-1 sm:flex-none w-full sm:w-auto">
-            <Button variant="primary" className="w-full flex items-center justify-center gap-2">
-              <Plus className="w-4 h-4 shrink-0" />
-              <span className="truncate">{t('crm.newCustomer')}</span>
-            </Button>
-          </Link>
+          <ActionGuard permission="crm.create">
+            <Link href="/crm/customers/new" className="flex-1 sm:flex-none w-full sm:w-auto">
+              <Button variant="primary" className="w-full flex items-center justify-center gap-2">
+                <Plus className="w-4 h-4 shrink-0" />
+                <span className="truncate">{t('crm.newCustomer')}</span>
+              </Button>
+            </Link>
+          </ActionGuard>
         </div>
       </div>
 

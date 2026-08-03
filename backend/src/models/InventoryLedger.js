@@ -23,6 +23,8 @@ const inventoryLedgerSchema = new mongoose.Schema({
       'RELEASED',
       'TRANSFER_IN',
       'TRANSFER_OUT',
+      'DISPATCH',
+      'RETURN',
       'DAMAGED',
       'REPAIRED',
       'SCRAPPED',

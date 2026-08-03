@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Edit, Phone, Mail, MapPin, Building, CreditCard, FileText, TrendingUp, Calendar, AlertTriangle } from 'lucide-react';
+import { ActionGuard } from '@/components/auth/ActionGuard';
 
 export function VendorDetail() {
   return (
@@ -30,12 +31,14 @@ export function VendorDetail() {
             <FileText size={16} />
             <span>Ledger</span>
           </button>
-          <Link href="/vendors/1/edit" className="flex-1 sm:flex-none">
-            <button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2.5 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors">
-              <Edit size={16} />
-              <span>Edit</span>
-            </button>
-          </Link>
+          <ActionGuard permission="purchases.update">
+            <Link href="/vendors/1/edit" className="flex-1 sm:flex-none">
+              <button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2.5 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors">
+                <Edit size={16} />
+                <span>Edit</span>
+              </button>
+            </Link>
+          </ActionGuard>
         </div>
       </div>
 

@@ -20,8 +20,7 @@ export function WarehouseAvailability() {
   const { data: warehouses = [], isLoading: warehousesLoading } = useSWR('/warehouses', warehouseService.getWarehouses);
 
   const filteredItems = items.filter(item => 
-    item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    (typeof item.category === 'object' && item.category?.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    item.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const isLoading = itemsLoading || warehousesLoading;
@@ -40,7 +39,7 @@ export function WarehouseAvailability() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Filter by name or category..."
+            placeholder="Filter by name..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-9 pr-4 py-1.5 bg-background border border-border rounded-lg text-xs focus:outline-none"
@@ -56,7 +55,6 @@ export function WarehouseAvailability() {
               <thead>
                 <tr className="border-b border-border bg-muted/40 font-black text-muted-foreground uppercase tracking-wider">
                   <th className="p-4">Item Name</th>
-                  <th className="p-4">Category</th>
                   {warehouses.map(wh => (
                     <th key={wh._id} className="p-4 text-center">{wh.name}</th>
                   ))}
@@ -71,19 +69,15 @@ export function WarehouseAvailability() {
                   return (
                     <tr key={item._id} className="hover:bg-muted/10">
                       <td className="p-4 font-bold text-foreground">{item.name}</td>
-                      <td className="p-4 text-muted-foreground">
-                        {typeof item.category === 'object' ? item.category?.name : item.category}
-                      </td>
                       {warehouses.map(wh => {
                         const whStock = (item.warehouseStock || []).find(
                           (ws: any) => (typeof ws.warehouse === 'object' ? ws.warehouse?._id : ws.warehouse) === wh._id
                         );
-                        // Available stock is: quantity - dispatched - damaged - reserved
+                        // Available stock is: quantity - dispatched - damaged
                         const qty = whStock ? whStock.quantity : 0;
-                        const reserved = whStock ? (whStock.reserved || 0) : 0;
                         const dispatched = whStock ? (whStock.dispatched || 0) : 0;
                         const damaged = whStock ? (whStock.damaged || 0) : 0;
-                        const available = Math.max(0, qty - reserved - dispatched - damaged);
+                        const available = Math.max(0, qty - dispatched - damaged);
 
                         return (
                           <td key={wh._id} className={`p-4 text-center ${available === 0 ? 'text-muted-foreground bg-muted/5' : 'text-foreground'}`}>

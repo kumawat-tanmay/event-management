@@ -91,11 +91,11 @@ export function InviteUserModal({ isOpen, onClose, onSuccess }: InviteUserModalP
                 onChange={(e) => setRole(e.target.value)}
                 disabled={isSubmitting}
                 required
-                className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex h-10 w-full rounded-md border border-input bg-background text-foreground px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <option value="" disabled>Select a role...</option>
+                <option value="" disabled className="bg-background text-foreground">Select a role...</option>
                 {roles?.map(r => (
-                  <option key={r._id} value={r.name}>{r.name}</option>
+                  <option key={r._id} value={r.name} className="bg-background text-foreground">{r.name}</option>
                 ))}
               </select>
             </div>

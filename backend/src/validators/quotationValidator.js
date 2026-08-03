@@ -2,15 +2,11 @@ const { z } = require('zod');
 
 // ─── Quotation Item Schema ──────────────────────────────────────────────────
 const quotationItemZ = z.object({
-  item: z.string().min(1, 'Item ID is required'),
+  item: z.string().optional().nullable(),
   itemName: z.string().min(1, 'Item name is required'),
   itemCode: z.string().optional(),
   unit: z.string().optional(),
-  rentalRate: z.union([z.number(), z.string().regex(/^\d+(\.\d+)?$/).transform(Number)]),
-  quantity: z.union([z.number().min(1), z.string().regex(/^\d+$/).transform(Number)]),
-  duration: z.union([z.number().min(1), z.string().regex(/^\d+$/).transform(Number)]),
-  discount: z.union([z.number().min(0).max(100), z.string().regex(/^\d+(\.\d+)?$/).transform(Number)]).optional(),
-  totalAmount: z.union([z.number(), z.string().regex(/^\d+(\.\d+)?$/).transform(Number)])
+  quantity: z.union([z.number().min(1), z.string().regex(/^\d+$/).transform(Number)])
 });
 
 exports.createQuotationSchema = {

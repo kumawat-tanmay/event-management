@@ -6,9 +6,9 @@ import useSWR from 'swr';
 import { ArrowLeft, Save, Box, IndianRupee, Settings, Loader2, Plus, Warehouse as WarehouseIcon, Layers, X, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
-import { inventoryService, Item, Category } from '@/lib/services/inventory.services';
+import { inventoryService, Item } from '@/lib/services/inventory.services';
 import { warehouseService, Warehouse } from '@/lib/services/warehouse.services';
-import { getItemSchema, getCategorySchema } from '@/utils/validations';
+import { getItemSchema } from '@/utils/validations';
 import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/utils/cn';
@@ -21,13 +21,12 @@ export function ItemForm({ isEditing = false }: ItemFormProps) {
   const { t } = useTranslation();
   const router = useRouter();
   const params = useParams();
-  
+
   const id = params?.id as string | undefined;
 
   // Item Form Fields State
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
-  const [category, setCategory] = useState('');
   const [description, setDescription] = useState('');
   const [unit, setUnit] = useState('Pieces');
   const [rentalPrice, setRentalPrice] = useState<number>(0);
@@ -37,20 +36,10 @@ export function ItemForm({ isEditing = false }: ItemFormProps) {
   const [image, setImage] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
-  // Quick Category Add modal state
-  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
-  const [quickCatName, setQuickCatName] = useState('');
-  const [quickCatCode, setQuickCatCode] = useState('');
-  const [quickCatDesc, setQuickCatDesc] = useState('');
-  const [isCreatingQuickCat, setIsCreatingQuickCat] = useState(false);
-
   // Warehouse Opening Stock State (only for Create Mode)
+  const [totalPieces, setTotalPieces] = useState<number>(0);
   type StockEntry = { quantity: number; zoneId?: string; rackId?: string };
   const [openingQuantities, setOpeningQuantities] = useState<Record<string, StockEntry>>({});
-
-  // Fetch Categories
-  const { data: categories, isLoading: categoriesLoading, mutate: mutateCategories } = useSWR<Category[]>('categories', inventoryService.getCategories);
-  const activeCategories = (categories || []).filter(c => c.status === 'Active');
 
   // Fetch Warehouses for opening stock list
   const { data: warehouses, isLoading: warehousesLoading } = useSWR<Warehouse[]>('warehouses', warehouseService.getWarehouses);
@@ -66,7 +55,6 @@ export function ItemForm({ isEditing = false }: ItemFormProps) {
     if (itemData) {
       setName(itemData.name);
       setCode(itemData.code);
-      setCategory(typeof itemData.category === 'object' ? (itemData.category as any)._id : itemData.category);
       setDescription(itemData.description || '');
       setUnit(itemData.unit);
       setRentalPrice(itemData.rentalPrice);
@@ -74,47 +62,15 @@ export function ItemForm({ isEditing = false }: ItemFormProps) {
       setMinStockAlert(itemData.minStockAlert);
       setIsActive(itemData.isActive);
       setImage(itemData.image || '');
+      setTotalPieces(itemData.totalStock || 0);
     }
   }, [itemData]);
 
-  // Handle Quick Category Creation
-  const handleCreateQuickCategory = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    const payload = {
-      name: quickCatName,
-      code: quickCatCode || undefined,
-      description: quickCatDesc,
-      status: 'Active' as const
-    };
-
-    const validationResult = getCategorySchema(t).safeParse(payload);
-    if (!validationResult.success) {
-      return toast.error(validationResult.error.issues[0]?.message || 'Invalid category input');
-    }
-
-    setIsCreatingQuickCat(true);
-    try {
-      const newCat = await inventoryService.createCategory(validationResult.data);
-      toast.success(t('category.createSuccess', 'Category created successfully'));
-      mutateCategories();
-      setCategory(newCat._id);
-      setIsCategoryModalOpen(false);
-      setQuickCatName('');
-      setQuickCatCode('');
-      setQuickCatDesc('');
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || t('category.saveFail', 'Failed to save category'));
-    } finally {
-      setIsCreatingQuickCat(false);
-    }
-  };
-
   const handleQtyChange = (whId: string, val: string) => {
     const num = Math.max(0, parseInt(val) || 0);
-    setOpeningQuantities(prev => ({ 
-      ...prev, 
-      [whId]: { ...prev[whId], quantity: num } 
+    setOpeningQuantities(prev => ({
+      ...prev,
+      [whId]: { ...prev[whId], quantity: num }
     }));
   };
 
@@ -131,98 +87,124 @@ export function ItemForm({ isEditing = false }: ItemFormProps) {
     const payload = {
       name,
       code: code || undefined,
-      category,
       description,
       unit,
-      rentalPrice: Number(rentalPrice),
-      purchaseCost: Number(purchaseCost),
-      minStockAlert: Number(minStockAlert),
-      isActive,
-      image
+      totalStock: Number(totalPieces) || 0,
+      purchaseCost: Number(purchaseCost) || 0,
+      minStockAlert: Number(minStockAlert) || 0,
+      isActive
     };
 
     const validationResult = getItemSchema(t).safeParse(payload);
     if (!validationResult.success) {
       const firstIssue = validationResult.error.issues[0]?.message || 'Invalid item data';
-      return toast.error(firstIssue);
+      toast.error(firstIssue);
+      return;
     }
 
-    setIsSaving(true);
+    // Verify sum of warehouse quantities matches totalPieces (only in create mode)
+    const sumOpeningQuantities = Object.values(openingQuantities).reduce((acc, entry) => acc + (entry.quantity || 0), 0);
+    if (!isEditing && sumOpeningQuantities !== totalPieces) {
+      toast.error(`Total Pieces (${totalPieces}) must match the sum of warehouse opening stock quantities (${sumOpeningQuantities}).`);
+      return;
+    }
+
     try {
-      if (isEditing) {
-        await inventoryService.updateItem(id!, payload);
-        toast.success(t('item.updateSuccess', 'Item updated successfully'));
-        router.push('/inventory/items');
+      setIsSaving(true);
+      if (isEditing && id) {
+        await inventoryService.updateItem(id, payload);
+        toast.success(t('item.updateSuccess', 'Item updated successfully!'));
       } else {
-        // Step 1: Create Item
+        // Create the item first
         const newItem = await inventoryService.createItem(payload);
         
-        // Step 2: Directly submit opening stock for warehouses with quantities > 0
-        const stockEntries = Object.entries(openingQuantities).filter(([_, entry]) => entry.quantity > 0);
-        if (stockEntries.length > 0) {
-          for (const [whId, entry] of stockEntries) {
-            await inventoryService.addOpeningStock(newItem._id, whId, entry.quantity, entry.zoneId, entry.rackId);
-          }
+        // Add opening stock sequentially to prevent concurrency conflicts
+        const openingStockEntries = Object.entries(openingQuantities)
+          .filter(([_, data]) => data.quantity > 0);
+          
+        for (const [warehouseId, data] of openingStockEntries) {
+          await inventoryService.addOpeningStock(
+            newItem._id,
+            warehouseId,
+            data.quantity,
+            data.zoneId,
+            data.rackId
+          );
         }
         
-        toast.success(t('item.createSuccess', 'Item created successfully'));
-        router.push('/inventory/items');
+        toast.success(t('item.createSuccess', 'Item created successfully!'));
       }
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || t('item.saveFail', 'Failed to save item'));
+      router.push('/inventory/items');
+    } catch (error: any) {
+      console.error('Error saving item:', error);
+      toast.error(error?.response?.data?.message || t('item.saveError', 'Failed to save item'));
     } finally {
       setIsSaving(false);
     }
   };
 
-  if ((isEditing && itemLoading) || categoriesLoading || warehousesLoading) {
+  if ((isEditing && itemLoading) || warehousesLoading) {
     return (
-      <div className="flex h-[400px] items-center justify-center">
+      <div className="flex items-center justify-center min-h-[400px]">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
   }
 
   return (
-    <div className="p-4 md:p-6 lg:p-8 w-full space-y-6">
-      
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <button 
-          type="button"
-          onClick={() => router.back()} 
-          className="p-2 text-muted-foreground hover:bg-muted rounded-xl transition-colors"
-        >
-          <ArrowLeft size={20} />
-        </button>
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">
-            {isEditing ? t('item.editItem') : t('item.addItem')}
-          </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {isEditing ? t('item.subtitle') : 'Create a new catalog item and set opening quantities.'}
-          </p>
+    <div className="flex flex-col p-4 md:p-6 lg:p-8 w-full font-sans">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => router.back()}
+            className="shrink-0"
+            disabled={isSaving}
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <div>
+            <h1 className="text-2xl font-black text-foreground tracking-tight">
+              {isEditing ? t('item.editItemTitle', 'Edit Item') : t('item.addItemTitle', 'Add New Item')}
+            </h1>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            onClick={() => router.back()}
+            disabled={isSaving}
+          >
+            {t('roles.cancel', 'Cancel')}
+          </Button>
+          <Button
+            variant="primary"
+            onClick={handleSubmit}
+            disabled={isSaving}
+            className="flex items-center gap-2"
+          >
+            {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            {isSaving ? t('item.saving', 'Saving...') : (isEditing ? t('item.updateItem', 'Update Item') : t('item.saveItem', 'Save Item'))}
+          </Button>
         </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        
-        {/* Single-Column Card Container */}
         <div className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden divide-y divide-border">
-          
-          {/* Section 1: Basic Information */}
+
           <div className="p-6 space-y-5">
             <div className="flex items-center gap-2 text-foreground font-bold text-lg mb-2">
               <Box className="w-5 h-5 text-primary" />
-              <h2>{t('item.basicInfo')}</h2>
+              <h2>{t('item.basicInfo', 'Basic Information')}</h2>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div className="space-y-1.5 md:col-span-2">
-                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('item.itemName')} *</label>
-                <Input 
-                  type="text" 
-                  placeholder="e.g. Premium Sofa Set" 
+                <Input
+                  label={`${t('item.itemName', 'Item Name')} *`}
+                  placeholder="e.g. Premium Sofa Set"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required
@@ -231,52 +213,20 @@ export function ItemForm({ isEditing = false }: ItemFormProps) {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('item.code')}</label>
-                <Input 
-                  type="text" 
-                  placeholder={t('item.codePlace')}
+                <Input
+                  label={t('item.codeOptional', 'SKU CODE (OPTIONAL)')}
+                  placeholder={t('item.codePlace', 'Auto-generates if left blank')}
                   value={code}
-                  onChange={(e) => setCode(e.target.value)}
+                  onChange={(e) => setCode(e.target.value.toUpperCase())}
                   disabled={isSaving}
                 />
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('item.category')} *</label>
-                <div className="flex gap-2 items-center">
-                  <div className="relative flex-1">
-                    <select 
-                      className="w-full h-10 pl-3 pr-10 py-2 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all appearance-none cursor-pointer text-foreground"
-                      value={category}
-                      onChange={(e) => setCategory(e.target.value)}
-                      required
-                      disabled={isSaving}
-                    >
-                      <option value="">{t('warehouse.selectManager')}</option>
-                      {activeCategories.map(cat => (
-                        <option key={cat._id} value={cat._id}>{cat.name}</option>
-                      ))}
-                    </select>
-                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-                  </div>
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    className="h-10 px-3 border border-border rounded-xl flex items-center justify-center hover:bg-muted text-primary"
-                    onClick={() => setIsCategoryModalOpen(true)}
-                    title={t('category.addCategory')}
-                    disabled={isSaving}
-                  >
-                    <Plus className="w-4 h-4 shrink-0" />
-                  </Button>
-                </div>
-              </div>
-
               <div className="space-y-1.5 md:col-span-2">
-                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('roles.description')}</label>
-                <textarea 
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('item.description', 'Description')}</label>
+                <textarea
                   rows={3}
-                  placeholder="Details about this item..." 
+                  placeholder="Details about this item..."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   className="w-full px-4 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none text-foreground"
@@ -286,37 +236,20 @@ export function ItemForm({ isEditing = false }: ItemFormProps) {
             </div>
           </div>
 
-          {/* Section 2: Pricing & Settings */}
           <div className="p-6 space-y-5">
             <div className="flex items-center gap-2 text-foreground font-bold text-lg mb-2">
               <Settings className="w-5 h-5 text-primary" />
-              <h2>{t('item.settingsPricing')}</h2>
+              <h2>{t('item.settingsPricing', 'Settings & Pricing')}</h2>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('item.rentalPrice')} *</label>
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Purchase Cost</label>
                 <div className="relative">
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">₹</span>
-                  <input 
-                    type="number" 
-                    placeholder="0.00" 
-                    value={rentalPrice || ''}
-                    onChange={(e) => setRentalPrice(Number(e.target.value))}
-                    className="w-full pl-8 pr-4 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-foreground"
-                    required
-                    disabled={isSaving}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('item.purchaseCost')}</label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">₹</span>
-                  <input 
-                    type="number" 
-                    placeholder="0.00" 
+                  <input
+                    type="number"
+                    placeholder="0.00"
                     value={purchaseCost || ''}
                     onChange={(e) => setPurchaseCost(Number(e.target.value))}
                     className="w-full pl-8 pr-4 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-foreground"
@@ -326,9 +259,9 @@ export function ItemForm({ isEditing = false }: ItemFormProps) {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('item.unit')}</label>
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('item.unit', 'Unit')}</label>
                 <div className="relative">
-                  <select 
+                  <select
                     id="unit-options"
                     value={unit}
                     onChange={(e) => setUnit(e.target.value)}
@@ -352,13 +285,36 @@ export function ItemForm({ isEditing = false }: ItemFormProps) {
 
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('item.minStockAlert')}</label>
-                <input 
-                  type="number" 
-                  placeholder="e.g. 5" 
+                <input
+                  type="number"
+                  placeholder="e.g. 5"
                   value={minStockAlert || ''}
                   onChange={(e) => setMinStockAlert(Number(e.target.value))}
                   className="w-full px-4 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-foreground"
                   disabled={isSaving}
+                />
+              </div>
+
+              {/* Total Pieces Input / Display */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                  {isEditing ? t('item.totalStock', 'Total Stock') : t('item.totalPieces', 'Total Pieces')}
+                </label>
+                <input 
+                  type="number" 
+                  placeholder="0" 
+                  value={isEditing ? (itemData?.totalStock || 0) : (totalPieces || '')}
+                  onChange={(e) => {
+                    if (!isEditing) {
+                      const val = Math.max(0, parseInt(e.target.value) || 0);
+                      setTotalPieces(val);
+                    }
+                  }}
+                  className={cn(
+                    "w-full px-4 py-2.5 border border-border rounded-xl text-sm text-foreground focus:outline-none",
+                    isEditing ? "bg-muted cursor-not-allowed" : "bg-background focus:ring-2 focus:ring-primary/50"
+                  )}
+                  disabled={isSaving || isEditing}
                 />
               </div>
 
@@ -368,7 +324,7 @@ export function ItemForm({ isEditing = false }: ItemFormProps) {
                   <p className="text-sm font-bold text-foreground">{t('item.activeItem')}</p>
                   <p className="text-xs text-muted-foreground">{t('item.activeItemDesc')}</p>
                 </div>
-                <div 
+                <div
                   onClick={() => !isSaving && setIsActive(!isActive)}
                   className={cn(
                     "w-10 h-6 rounded-full relative cursor-pointer transition-colors duration-200",
@@ -418,7 +374,7 @@ export function ItemForm({ isEditing = false }: ItemFormProps) {
                               <p className="text-xs text-muted-foreground">{wh.location || wh.address}</p>
                             </div>
                           </div>
-                          
+
                           <div className="flex items-center gap-2 max-w-xs w-full sm:w-56 shrink-0">
                             <span className="text-xs font-bold text-muted-foreground whitespace-nowrap">{t('item.initialStock')}</span>
                             <Input
@@ -439,7 +395,7 @@ export function ItemForm({ isEditing = false }: ItemFormProps) {
                             <div className="mt-1 flex flex-col sm:flex-row gap-3 p-3 bg-background border border-border rounded-xl">
                               <div className="flex-1 space-y-1.5">
                                 <label className="text-xs font-bold text-muted-foreground uppercase">{t('item.selectZone', 'Select Zone')}</label>
-                                <select 
+                                <select
                                   className="w-full h-9 px-3 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
                                   value={entry.zoneId || ''}
                                   onChange={(e) => {
@@ -456,7 +412,7 @@ export function ItemForm({ isEditing = false }: ItemFormProps) {
                               </div>
                               <div className="flex-1 space-y-1.5">
                                 <label className="text-xs font-bold text-muted-foreground uppercase">{t('item.selectRack', 'Select Rack')}</label>
-                                <select 
+                                <select
                                   className="w-full h-9 px-3 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
                                   value={entry.rackId || ''}
                                   onChange={(e) => handleLocationChange(wh._id, 'rackId', e.target.value)}
@@ -483,17 +439,17 @@ export function ItemForm({ isEditing = false }: ItemFormProps) {
 
         {/* Footer Actions */}
         <div className="flex justify-end gap-3 pt-2">
-          <Button 
-            type="button" 
-            variant="outline" 
+          <Button
+            type="button"
+            variant="outline"
             onClick={() => router.back()}
             disabled={isSaving}
             className="min-w-[120px]"
           >
             Cancel
           </Button>
-          <Button 
-            type="submit" 
+          <Button
+            type="submit"
             variant="primary"
             className="min-w-[140px] flex items-center justify-center gap-2"
             disabled={isSaving}
@@ -505,79 +461,6 @@ export function ItemForm({ isEditing = false }: ItemFormProps) {
 
       </form>
 
-      {/* ─── Quick Add Category Popup Modal ───────────────────────────────── */}
-      {isCategoryModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/60 backdrop-blur-sm">
-          <div className="bg-card w-full max-w-md rounded-2xl shadow-xl border border-border overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="p-6 border-b border-border flex items-center justify-between bg-zinc-50 dark:bg-zinc-900/50">
-              <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
-                <Layers className="w-5 h-5 text-primary" />
-                {t('category.addCategory')}
-              </h3>
-              <button 
-                type="button"
-                onClick={() => setIsCategoryModalOpen(false)} 
-                className="p-1 rounded-full text-muted-foreground hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            
-            <form onSubmit={handleCreateQuickCategory} className="p-6 space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('category.categoryName')} *</label>
-                <Input 
-                  type="text" 
-                  value={quickCatName} 
-                  onChange={(e) => setQuickCatName(e.target.value)} 
-                  placeholder="e.g. Chairs, Lighting" 
-                  required 
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('category.code')}</label>
-                <Input 
-                  type="text" 
-                  value={quickCatCode} 
-                  onChange={(e) => setQuickCatCode(e.target.value)} 
-                  placeholder="e.g. CHR, LGT" 
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('roles.description')}</label>
-                <textarea 
-                  rows={3} 
-                  value={quickCatDesc} 
-                  onChange={(e) => setQuickCatDesc(e.target.value)} 
-                  placeholder={t('category.describePlace')} 
-                  className="w-full px-3 py-2 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-foreground resize-none"
-                />
-              </div>
-
-              <div className="flex gap-2 justify-end pt-4 border-t border-border mt-6">
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={() => setIsCategoryModalOpen(false)}
-                  disabled={isCreatingQuickCat}
-                >
-                  {t('warehouse.cancel')}
-                </Button>
-                <Button 
-                  type="submit" 
-                  variant="primary" 
-                  className="min-w-[100px]"
-                  disabled={isCreatingQuickCat}
-                >
-                  {isCreatingQuickCat ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : t('category.addCategory')}
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -8,6 +8,7 @@ import { DataTable } from '@/components/common/DataTable';
 import { Button } from '@/components/common/Button';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { usePermissions } from '@/hooks/usePermissions';
+import { ActionGuard } from '@/components/auth/ActionGuard';
 import { InviteUserModal } from './InviteUserModal';
 
 export default function UsersListView() {
@@ -72,12 +73,12 @@ export default function UsersListView() {
     <div className="h-full flex flex-col p-6 space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold font-display">User Management</h2>
-        {canInvite && (
+        <ActionGuard permission="users.create">
           <Button onClick={() => setIsInviteModalOpen(true)} className="gap-2 shadow-sm">
             <UserPlus className="w-4 h-4" />
             Invite User
           </Button>
-        )}
+        </ActionGuard>
       </div>
 
       <div className="flex-1 bg-card border border-border rounded-xl shadow-sm overflow-hidden">

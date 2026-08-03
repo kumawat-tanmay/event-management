@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Edit, Download, Printer, CheckCircle2, Box, Truck } from 'lucide-react';
+import { ActionGuard } from '@/components/auth/ActionGuard';
 
 export function PurchaseDetailView() {
   return (
@@ -30,10 +31,12 @@ export function PurchaseDetailView() {
             <Download size={16} />
             <span>PDF</span>
           </button>
-          <button className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors">
-            <CheckCircle2 size={16} />
-            <span>Approve PO</span>
-          </button>
+          <ActionGuard permission="purchases.update">
+            <button className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors">
+              <CheckCircle2 size={16} />
+              <span>Approve PO</span>
+            </button>
+          </ActionGuard>
         </div>
       </div>
 

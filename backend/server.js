@@ -15,6 +15,22 @@ const ensureConnection = async () => {
   if (!isConnected) {
     await connectDB();
     isConnected = true;
+
+    // Seed default roles if the roles collection is empty (prevents permission breakage after DB wipes)
+    const Role = require('./src/models/Role');
+    const { DEFAULT_ROLES } = require('./src/config/permissions');
+    const existingCount = await Role.countDocuments({});
+    if (existingCount === 0) {
+      console.log('📋 Roles collection empty — seeding default roles...');
+      const roleDocs = Object.values(DEFAULT_ROLES).map(r => ({
+        name: r.name,
+        permissions: r.permissions,
+        isSystem: r.isSystem || true,
+        isDeleted: false,
+      }));
+      await Role.insertMany(roleDocs);
+      console.log(`✅ Seeded ${roleDocs.length} default roles.`);
+    }
   }
 };
 

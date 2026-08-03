@@ -13,7 +13,7 @@ import GoogleAuthProvider from "@/provider/GoogleAuthProvider";
 import I18nProvider from "@/provider/I18nProvider";
 // import AutoScrollToTop from "@/components/common/AutoScrollToTop";
 // import InstallPWAButton from "@/components/common/InstallPWAButton";
-// import { buildMetadata } from "@/utils/seoConfig";
+import { buildMetadata } from "@/utils/seoConfig";
 
 const inter = Inter({
   variable: "--font-sans",
@@ -27,10 +27,7 @@ const outfit = Outfit({
   weight: ["400", "600", "700", "800"],
 });
 
-export const metadata: Metadata = {
-  title: "Krishna Tent & Events ERP",
-  description: "Enterprise Resource Planning for Tent & Events Management",
-};
+export const metadata: Metadata = buildMetadata();
 
 export const viewport: Viewport = {
   width: "device-width",

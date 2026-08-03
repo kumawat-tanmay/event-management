@@ -9,6 +9,7 @@ import { DataTable } from '@/components/common/DataTable';
 import { AdjustStockModal } from './AdjustStockModal';
 import useSWR from 'swr';
 import { inventoryService, Item, LedgerEntry } from '@/lib/services/inventory.services';
+import { ActionGuard } from '@/components/auth/ActionGuard';
 import { warehouseService, Warehouse } from '@/lib/services/warehouse.services';
 import { useTranslation } from 'react-i18next';
 
@@ -96,8 +97,9 @@ export function ItemDetailView() {
       accessorKey: 'zoneId', 
       cell: (row: any) => {
         if (!row.zoneId) return <span className="text-muted-foreground">—</span>;
-        const wh = warehouses?.find(w => w._id === row.warehouse?._id);
-        const zone = wh?.zones?.find((z: any) => z._id === row.zoneId);
+        const whId = row.warehouse && typeof row.warehouse === 'object' ? String(row.warehouse._id || row.warehouse.id || '') : String(row.warehouse || '');
+        const wh = warehouses?.find(w => String(w._id) === whId || String((w as any).id) === whId);
+        const zone = wh?.zones?.find((z: any) => String(z._id) === String(row.zoneId) || String(z.id) === String(row.zoneId));
         return <span className="text-foreground">{zone?.name || row.zoneId}</span>;
       } 
     },
@@ -106,21 +108,17 @@ export function ItemDetailView() {
       accessorKey: 'rackId', 
       cell: (row: any) => {
         if (!row.rackId) return <span className="text-muted-foreground">—</span>;
-        const wh = warehouses?.find(w => w._id === row.warehouse?._id);
-        const zone = wh?.zones?.find((z: any) => z._id === row.zoneId);
-        const rack = zone?.racks?.find((r: any) => r._id === row.rackId);
+        const whId = row.warehouse && typeof row.warehouse === 'object' ? String(row.warehouse._id || row.warehouse.id || '') : String(row.warehouse || '');
+        const wh = warehouses?.find(w => String(w._id) === whId || String((w as any).id) === whId);
+        const zone = wh?.zones?.find((z: any) => String(z._id) === String(row.zoneId) || String(z.id) === String(row.zoneId));
+        const rack = zone?.racks?.find((r: any) => String(r._id) === String(row.rackId) || String(r.id) === String(row.rackId));
         return <span className="text-foreground">{rack?.name || row.rackId}</span>;
       } 
     },
     { 
       header: t('item.available', 'Available'), 
       accessorKey: 'quantity', 
-      cell: (row: any) => <span className="font-semibold text-emerald-600">{row.quantity - row.reserved - row.dispatched - row.damaged}</span> 
-    },
-    { 
-      header: t('item.reserved', 'Reserved'), 
-      accessorKey: 'reserved', 
-      cell: (row: any) => <span className="text-blue-500">{row.reserved}</span> 
+      cell: (row: any) => <span className="font-semibold text-emerald-600">{row.quantity - (row.dispatched || 0) - (row.damaged || 0)}</span> 
     },
     { 
       header: t('item.rentedOut', 'Rented Out'), 
@@ -151,8 +149,6 @@ export function ItemDetailView() {
   }
 
   const isLowStock = item.totalStock <= item.minStockAlert && item.minStockAlert > 0;
-  const categoryName = typeof item.category === 'object' ? (item.category as any).name : '—';
-
   return (
     <div className="flex flex-col p-4 md:p-6 lg:p-8 w-full gap-8">
       {/* Header */}
@@ -172,27 +168,30 @@ export function ItemDetailView() {
           </div>
           <div className="flex items-center gap-4 ml-10 text-sm font-medium text-muted-foreground">
             <span className="flex items-center gap-1.5"><Hash className="w-4 h-4" /> {item.code}</span>
-            <span className="flex items-center gap-1.5 text-primary"><Tag className="w-4 h-4" /> {categoryName}</span>
           </div>
         </div>
         
         <div className="flex items-center gap-3">
-          <Button 
-            variant="outline" 
-            className="flex items-center gap-2"
-            onClick={() => setAdjustStockModalOpen(true)}
-          >
-            <Layers className="w-4 h-4 shrink-0" />
-            <span className="truncate">Adjust Stock</span>
-          </Button>
-          <Button 
-            variant="primary" 
-            className="flex items-center gap-2"
-            onClick={() => router.push(`/inventory/items/${item._id}/edit`)}
-          >
-            <Edit className="w-4 h-4 shrink-0" />
-            <span className="truncate">{t('item.editItem')}</span>
-          </Button>
+          <ActionGuard permission="inventory.update">
+            <Button 
+              variant="outline" 
+              className="flex items-center gap-2"
+              onClick={() => setAdjustStockModalOpen(true)}
+            >
+              <Layers className="w-4 h-4 shrink-0" />
+              <span className="truncate">Adjust Stock</span>
+            </Button>
+          </ActionGuard>
+          <ActionGuard permission="inventory.update">
+            <Button 
+              variant="primary" 
+              className="flex items-center gap-2"
+              onClick={() => router.push(`/inventory/items/${item._id}/edit`)}
+            >
+              <Edit className="w-4 h-4 shrink-0" />
+              <span className="truncate">{t('item.editItem', 'Edit Item')}</span>
+            </Button>
+          </ActionGuard>
         </div>
       </div>
 
@@ -228,10 +227,12 @@ export function ItemDetailView() {
               {item.description || t('category.noDescription', 'No description provided.')}
             </p>
             <div className="space-y-3 pt-3">
-              <div className="flex justify-between items-center py-2 border-b border-border/50">
-                <span className="text-sm text-muted-foreground flex items-center gap-2"><Tag className="w-4 h-4" /> {t('item.rentalPrice')}</span>
-                <span className="text-sm font-semibold text-emerald-500">₹{item.rentalPrice.toLocaleString()}/{item.unit}</span>
-              </div>
+              {item.rentalPrice > 0 && (
+                <div className="flex justify-between items-center py-2 border-b border-border/50">
+                  <span className="text-sm text-muted-foreground flex items-center gap-2"><Tag className="w-4 h-4" /> {t('item.rentalPrice')}</span>
+                  <span className="text-sm font-semibold text-emerald-500">₹{item.rentalPrice.toLocaleString()}/{item.unit}</span>
+                </div>
+              )}
               <div className="flex justify-between items-center py-2">
                 <span className="text-sm text-muted-foreground flex items-center gap-2"><IndianRupee className="w-4 h-4" /> {t('item.purchaseCost')}</span>
                 <span className="text-sm font-semibold text-foreground">₹{item.purchaseCost.toLocaleString()}</span>
@@ -245,22 +246,17 @@ export function ItemDetailView() {
           
           {/* Stock Stats */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 shrink-0">
-            <div className="bg-card border border-border rounded-2xl p-4 shadow-sm flex flex-col items-center justify-center text-center">
-              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">{t('category.totalItems')}</span>
-              <span className="text-3xl font-black text-foreground">{item.totalStock}</span>
-            </div>
-            <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-4 shadow-sm flex flex-col items-center justify-center text-center">
-              <span className="text-xs font-bold text-emerald-600 dark:text-emerald-500 uppercase tracking-wider mb-2">{t('item.available')}</span>
-              <span className="text-3xl font-black text-emerald-600 dark:text-emerald-400">{item.availableStock}</span>
-            </div>
-            <div className="bg-blue-500/10 border border-blue-500/30 rounded-2xl p-4 shadow-sm flex flex-col items-center justify-center text-center">
-              <span className="text-xs font-bold text-blue-600 dark:text-blue-500 uppercase tracking-wider mb-2">{t('item.rentedOut')}</span>
-              <span className="text-3xl font-black text-blue-600 dark:text-blue-400">{item.dispatchedStock}</span>
-            </div>
-            <div className="bg-orange-500/10 border border-orange-500/30 rounded-2xl p-4 shadow-sm flex flex-col items-center justify-center text-center">
-              <span className="text-xs font-bold text-orange-600 dark:text-orange-500 uppercase tracking-wider mb-2">{t('item.repair')}</span>
-              <span className="text-3xl font-black text-orange-600 dark:text-orange-400">{item.damagedStock}</span>
-            </div>
+            {[
+              { label: t('category.totalItems'), val: item.totalStock, container: 'bg-card border-border', labelCls: 'text-muted-foreground', valCls: 'text-foreground' },
+              { label: t('item.available'), val: item.availableStock, container: 'bg-emerald-500/10 border-emerald-500/30', labelCls: 'text-emerald-600 dark:text-emerald-500', valCls: 'text-emerald-600 dark:text-emerald-400' },
+              { label: t('item.rentedOut'), val: item.dispatchedStock, container: 'bg-blue-500/10 border-blue-500/30', labelCls: 'text-blue-600 dark:text-blue-500', valCls: 'text-blue-600 dark:text-blue-400' },
+              { label: t('item.repair'), val: item.damagedStock, container: 'bg-orange-500/10 border-orange-500/30', labelCls: 'text-orange-600 dark:text-orange-500', valCls: 'text-orange-600 dark:text-orange-400' }
+            ].map((stat, idx) => (
+              <div key={idx} className={`border rounded-2xl p-4 shadow-sm flex flex-col items-center justify-center text-center ${stat.container}`}>
+                <span className={`text-xs font-bold uppercase tracking-wider mb-2 ${stat.labelCls}`}>{stat.label}</span>
+                <span className={`text-3xl font-black ${stat.valCls}`}>{stat.val}</span>
+              </div>
+            ))}
           </div>
 
           {/* Warehouse Breakdown */}

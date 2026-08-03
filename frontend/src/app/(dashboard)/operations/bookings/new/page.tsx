@@ -1,4 +1,4 @@
-import { OperationForm } from '@/components/dashboard/operations/quotations/OperationForm';
+import { BookingForm } from '@/components/dashboard/operations/bookings/BookingForm';
 
 export const metadata = {
   title: 'Create Booking | Krishna Events ERP',
@@ -6,5 +6,5 @@ export const metadata = {
 };
 
 export default function NewBookingPage() {
-  return <OperationForm mode="booking" />;
+  return <BookingForm />;
 }

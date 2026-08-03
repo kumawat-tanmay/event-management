@@ -1,1 +1,10 @@
-export default function Placeholder() { return <div className='p-8 flex items-center justify-center h-screen text-muted-foreground'>Coming Soon...</div>; }
+import { StockTransfersView } from '@/components/dashboard/logistics/transfer/StockTransfersView';
+
+export const metadata = {
+  title: 'Stock Transfers | Krishna Events ERP',
+  description: 'Manage inter-godown equipment transfers',
+};
+
+export default function StockTransfersPage() {
+  return <StockTransfersView />;
+}

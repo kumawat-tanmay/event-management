@@ -1,15 +1,14 @@
 const Booking = require('../models/Booking');
 const { generateBookingId, createPendingReservation } = require('../services/bookingService');
 const { calculateQuotationTotals } = require('../services/quotationService');
+const mongoose = require('mongoose');
+const Reservation = require('../models/Reservation');
+const StockLock = require('../models/StockLock');
+const Payment = require('../models/Payment');
+const Expense = require('../models/Expense');
+const Invoice = require('../models/Invoice');
 
-// Helper to sanitize empty ObjectId fields
-const sanitizePayload = (body) => {
-  const payload = { ...body };
-  if (payload.customer === '' || payload.customer === null) delete payload.customer;
-  if (payload.quotation === '' || payload.quotation === null) delete payload.quotation;
-  if (payload.assignedSupervisor === '' || payload.assignedSupervisor === null) delete payload.assignedSupervisor;
-  return payload;
-};
+const { sanitizePayload } = require('../utils/sanitize');
 
 // ─── GET /api/bookings ──────────────────────────────────────────────────────
 // @desc    List bookings with pagination, search, status filter
@@ -23,9 +22,10 @@ const getBookings = async (req, res) => {
     }
 
     if (search) {
+      const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       query.$or = [
-        { bookingId: { $regex: search, $options: 'i' } },
-        { eventTitle: { $regex: search, $options: 'i' } }
+        { bookingId: { $regex: escapedSearch, $options: 'i' } },
+        { eventTitle: { $regex: escapedSearch, $options: 'i' } }
       ];
     }
 
@@ -42,19 +42,33 @@ const getBookings = async (req, res) => {
       .lean();
 
     // Aggregate stats
-    const allBookings = await Booking.find({ isDeleted: false }).lean();
+    const aggResult = await Booking.aggregate([
+      { $match: { isDeleted: false } },
+      { $group: {
+          _id: '$status',
+          count: { $sum: 1 },
+          totalValue: { $sum: '$grandTotal' },
+          totalAdvance: { $sum: '$advancePaid' },
+          totalBalance: { $sum: '$balanceAmount' }
+        }
+      }
+    ]);
+
     const stats = {
-      total: allBookings.length,
-      draft: allBookings.filter(b => b.status === 'Draft').length,
-      confirmed: allBookings.filter(b => b.status === 'Confirmed').length,
-      planning: allBookings.filter(b => b.status === 'Planning').length,
-      inProgress: allBookings.filter(b => b.status === 'InProgress').length,
-      completed: allBookings.filter(b => b.status === 'Completed').length,
-      cancelled: allBookings.filter(b => b.status === 'Cancelled').length,
-      totalValue: allBookings.reduce((sum, b) => sum + (b.grandTotal || 0), 0),
-      totalAdvance: allBookings.reduce((sum, b) => sum + (b.advancePaid || 0), 0),
-      totalBalance: allBookings.reduce((sum, b) => sum + (b.balanceAmount || 0), 0)
+      total: 0, draft: 0, confirmed: 0, planning: 0, inProgress: 0, completed: 0, cancelled: 0,
+      totalValue: 0, totalAdvance: 0, totalBalance: 0
     };
+
+    aggResult.forEach(g => {
+      stats.total += g.count;
+      stats.totalValue += g.totalValue;
+      stats.totalAdvance += g.totalAdvance;
+      stats.totalBalance += g.totalBalance;
+      const statusKey = g._id === 'InProgress' ? 'inProgress' : g._id.toLowerCase();
+      if (stats[statusKey] !== undefined) {
+        stats[statusKey] = g.count;
+      }
+    });
 
     res.json({
       success: true,
@@ -98,6 +112,9 @@ const getBookingById = async (req, res) => {
 // ─── POST /api/bookings ────────────────────────────────────────────────────
 // @desc    Create a direct booking (without quotation conversion)
 const createBooking = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
     const cleanPayload = sanitizePayload(req.body);
     const bookingId = await generateBookingId();
@@ -107,14 +124,15 @@ const createBooking = async (req, res) => {
       cleanPayload.items,
       cleanPayload.transportCharges || 0,
       cleanPayload.labourCharges || 0,
-      cleanPayload.taxRate || 18
+      cleanPayload.taxRate || 18,
+      cleanPayload.discount || 0
     );
 
     const advanceRequired = cleanPayload.advanceRequired || Math.round(grandTotal * 0.3);
     const advancePaid = cleanPayload.advancePaid || 0;
     const balanceAmount = Math.max(0, grandTotal - advancePaid);
 
-    const booking = await Booking.create({
+    const [booking] = await Booking.create([{
       ...cleanPayload,
       bookingId,
       subtotal,
@@ -125,10 +143,13 @@ const createBooking = async (req, res) => {
       balanceAmount,
       status: advancePaid > 0 ? 'Confirmed' : 'Draft',
       createdBy: req.user?._id
-    });
+    }], { session });
 
     // Auto-create pending reservation
-    await createPendingReservation(booking, req.user?._id || req.user?.id);
+    await createPendingReservation(booking, req.user?._id || req.user?.id, session);
+
+    await session.commitTransaction();
+    session.endSession();
 
     const populated = await Booking.findById(booking._id)
       .populate('customer', 'name phone type')
@@ -136,6 +157,8 @@ const createBooking = async (req, res) => {
 
     res.status(201).json({ success: true, data: populated, message: 'Booking created successfully' });
   } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
     console.error('Error creating booking:', error);
     if (error.code === 11000) {
       return res.status(409).json({ success: false, message: 'Duplicate booking ID. Please try again.' });
@@ -162,7 +185,8 @@ const updateBooking = async (req, res) => {
         cleanPayload.items,
         cleanPayload.transportCharges ?? booking.transportCharges,
         cleanPayload.labourCharges ?? booking.labourCharges,
-        cleanPayload.taxRate ?? booking.taxRate
+        cleanPayload.taxRate ?? booking.taxRate,
+        cleanPayload.discount ?? booking.discount
       );
       cleanPayload.subtotal = subtotal;
       cleanPayload.taxAmount = taxAmount;
@@ -203,7 +227,34 @@ const deleteBooking = async (req, res) => {
     booking.isDeleted = true;
     await booking.save();
 
-    res.json({ success: true, message: 'Booking deleted successfully' });
+    // Clean up associated reservations and stock locks
+    await Reservation.updateMany(
+      { bookingId: booking._id, isDeleted: false },
+      { $set: { isDeleted: true, status: 'Released' } }
+    );
+
+    await StockLock.updateMany(
+      { bookingId: booking._id, isDeleted: false },
+      { $set: { isDeleted: true, isReleased: true } }
+    );
+
+    // Soft delete associated financial transactions
+    await Payment.updateMany(
+      { bookingId: booking._id, isDeleted: false },
+      { $set: { isDeleted: true } }
+    );
+
+    await Expense.updateMany(
+      { referenceId: booking._id, refModel: 'Booking', isDeleted: false },
+      { $set: { isDeleted: true } }
+    );
+
+    await Invoice.updateMany(
+      { bookingId: booking._id, isDeleted: false },
+      { $set: { isDeleted: true } }
+    );
+
+    res.json({ success: true, message: 'Booking and associated financial records deleted successfully' });
   } catch (error) {
     console.error('Error deleting booking:', error);
     res.status(500).json({ success: false, message: 'Server Error' });

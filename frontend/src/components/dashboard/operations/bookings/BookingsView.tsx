@@ -10,6 +10,8 @@ import { StatusBadge } from '@/components/common/StatusBadge';
 import { StatsCard } from '@/components/common/StatsCard';
 import { ConfirmModal } from '@/components/common/ConfirmModal';
 import { bookingService, Booking, BookingStats } from '@/lib/services/booking.services';
+import { ActionGuard } from '@/components/auth/ActionGuard';
+import toast from 'react-hot-toast';
 
 export function BookingsView() {
   const { t } = useTranslation();
@@ -26,17 +28,7 @@ export function BookingsView() {
   const fetchBookings = useCallback(async () => {
     try {
       setLoading(true);
-      const statusMap: Record<string, string> = {
-        CONFIRMED: 'Confirmed',
-        INPROGRESS: 'InProgress',
-        COMPLETED: 'Completed',
-        CANCELLED: 'Cancelled'
-      };
-      const statusFilter = activeTab !== 'ALL' ? statusMap[activeTab] : undefined;
-      const response = await bookingService.getBookings({
-        search: searchQuery || undefined,
-        status: statusFilter,
-      });
+      const response = await bookingService.getBookings({ limit: 200 });
       setData(response.data);
       setStats(response.stats);
     } catch (error) {
@@ -44,19 +36,41 @@ export function BookingsView() {
     } finally {
       setLoading(false);
     }
-  }, [activeTab, searchQuery]);
+  }, []);
 
   useEffect(() => {
     fetchBookings();
   }, [fetchBookings]);
 
+  const filteredData = React.useMemo(() => {
+    return data.filter(booking => {
+      if (activeTab === 'CONFIRMED' && booking.status !== 'Confirmed') return false;
+      if (activeTab === 'INPROGRESS' && booking.status !== 'InProgress' && booking.status !== 'Planning') return false;
+      if (activeTab === 'COMPLETED' && booking.status !== 'Completed') return false;
+      if (activeTab === 'CANCELLED' && booking.status !== 'Cancelled') return false;
+
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        const bId = (booking.bookingId || '').toLowerCase();
+        const cust = (booking.customer?.name || '').toLowerCase();
+        const title = (booking.eventTitle || '').toLowerCase();
+        const venue = (booking.venueAddress || '').toLowerCase();
+        return bId.includes(q) || cust.includes(q) || title.includes(q) || venue.includes(q);
+      }
+
+      return true;
+    });
+  }, [data, activeTab, searchQuery]);
+
   const confirmDelete = async () => {
     if (bookingToDelete) {
       try {
         await bookingService.deleteBooking(bookingToDelete);
+        toast.success('Booking and associated financial records deleted successfully');
         await fetchBookings();
       } catch (error) {
         console.error('Error deleting booking:', error);
+        toast.error('Failed to delete booking');
       }
       setDeleteModalOpen(false);
       setBookingToDelete(null);
@@ -147,24 +161,28 @@ export function BookingsView() {
               <Eye className="w-4 h-4" />
             </Button>
           </Link>
-          <Link href={`/operations/bookings/${row._id}/edit`} title={t('bookings.editBooking')}>
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors" disabled={row.status === 'Cancelled'}>
-              <Edit className="w-4 h-4" />
+          <ActionGuard permission="bookings.update">
+            <Link href={`/operations/bookings/${row._id}/edit`} title={t('bookings.editBooking')}>
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors" disabled={row.status === 'Cancelled'}>
+                <Edit className="w-4 h-4" />
+              </Button>
+            </Link>
+          </ActionGuard>
+          <ActionGuard permission="bookings.delete">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => {
+                setBookingToDelete(row._id);
+                setDeleteModalOpen(true);
+              }}
+              disabled={row.status === 'Cancelled' || row.status === 'Completed'}
+              className="h-8 w-8 text-muted-foreground hover:text-error hover:bg-error/10 transition-colors"
+              title={t('crm.delete')}
+            >
+              <Trash2 className="w-4 h-4" />
             </Button>
-          </Link>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => {
-              setBookingToDelete(row._id);
-              setDeleteModalOpen(true);
-            }}
-            disabled={row.status === 'Cancelled' || row.status === 'Completed'}
-            className="h-8 w-8 text-muted-foreground hover:text-error hover:bg-error/10 transition-colors"
-            title={t('crm.delete')}
-          >
-            <Trash2 className="w-4 h-4" />
-          </Button>
+          </ActionGuard>
         </div>
       )
     },
@@ -184,12 +202,14 @@ export function BookingsView() {
             <RefreshCw className="w-4 h-4" />
             Refresh
           </Button>
-          <Link href="/operations/bookings/new" className="flex-1 sm:flex-none w-full sm:w-auto">
-            <Button variant="primary" className="w-full flex items-center justify-center gap-2">
-              <Plus className="w-4 h-4 shrink-0" />
-              <span className="truncate">{t('bookings.newBooking')}</span>
-            </Button>
-          </Link>
+          <ActionGuard permission="bookings.create">
+            <Link href="/operations/bookings/new" className="flex-1 sm:flex-none w-full sm:w-auto">
+              <Button variant="primary" className="w-full flex items-center justify-center gap-2">
+                <Plus className="w-4 h-4 shrink-0" />
+                <span className="truncate">{t('bookings.newBooking')}</span>
+              </Button>
+            </Link>
+          </ActionGuard>
         </div>
       </div>
 
@@ -262,7 +282,7 @@ export function BookingsView() {
         <div className="flex-1 overflow-auto">
           <DataTable
             columns={columns}
-            data={data}
+            data={filteredData}
           />
         </div>
       </div>

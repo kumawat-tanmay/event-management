@@ -54,6 +54,12 @@ const bookingSchema = new mongoose.Schema({
     default: 0,
     min: 0
   },
+  discount: {
+    type: Number,
+    default: 0,
+    min: 0,
+    max: 100
+  },
   transportCharges: {
     type: Number,
     default: 0,
@@ -101,7 +107,7 @@ const bookingSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['Draft', 'Confirmed', 'Planning', 'InProgress', 'Completed', 'Cancelled'],
+    enum: ['Draft', 'Confirmed', 'Stock Locked', 'Planning', 'InProgress', 'Completed', 'Cancelled'],
     default: 'Draft'
   },
   agreementSigned: {

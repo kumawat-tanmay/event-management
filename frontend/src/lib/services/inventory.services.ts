@@ -1,24 +1,10 @@
 import apiClient from '../apiClient';
 
-export interface Category {
-  _id: string;
-  name: string;
-  code?: string;
-  description?: string;
-  status: 'Active' | 'Inactive';
-  itemsCount: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export type CategoryInput = Omit<Category, '_id' | 'createdAt' | 'updatedAt' | 'itemsCount'>;
-
 export interface WarehouseStockEntry {
   warehouse: { _id: string; name: string } | string;
   zoneId?: string;
   rackId?: string;
   quantity: number;
-  reserved: number;
   dispatched: number;
   damaged: number;
 }
@@ -27,14 +13,12 @@ export interface Item {
   _id: string;
   name: string;
   code: string;
-  category: { _id: string; name: string } | string;
   description?: string;
   unit: string;
   rentalPrice: number;
   purchaseCost: number;
   totalStock: number;
   availableStock: number;
-  reservedStock: number;
   dispatchedStock: number;
   damagedStock: number;
   warehouseStock: WarehouseStockEntry[];
@@ -48,10 +32,9 @@ export interface Item {
 export type ItemInput = {
   name: string;
   code?: string;
-  category: string;
   description?: string;
   unit: string;
-  rentalPrice: number;
+  totalStock?: number;
   purchaseCost: number;
   minStockAlert: number;
   isActive: boolean;
@@ -92,7 +75,6 @@ export interface GetLedgerResponse {
 }
 
 export interface GetItemsParams {
-  category?: string;
   status?: string;
   lowStock?: boolean;
   search?: string;
@@ -111,31 +93,6 @@ export interface GetLedgerParams {
 }
 
 export const inventoryService = {
-  // ─── Categories ─────────────────────────────────────────────────────────────
-  getCategories: async (): Promise<Category[]> => {
-    const res = await apiClient.get('/inventory/categories');
-    return res.data.data;
-  },
-
-  getCategoryById: async (id: string): Promise<Category & { items: Item[] }> => {
-    const res = await apiClient.get(`/inventory/categories/${id}`);
-    return res.data.data;
-  },
-
-  createCategory: async (data: CategoryInput): Promise<Category> => {
-    const res = await apiClient.post('/inventory/categories', data);
-    return res.data.data;
-  },
-
-  updateCategory: async (id: string, data: Partial<CategoryInput>): Promise<Category> => {
-    const res = await apiClient.put(`/inventory/categories/${id}`, data);
-    return res.data.data;
-  },
-
-  deleteCategory: async (id: string): Promise<void> => {
-    await apiClient.delete(`/inventory/categories/${id}`);
-  },
-
   // ─── Items ──────────────────────────────────────────────────────────────────
   getItems: async (params?: GetItemsParams): Promise<GetItemsResponse> => {
     const res = await apiClient.get('/inventory/items', { params });

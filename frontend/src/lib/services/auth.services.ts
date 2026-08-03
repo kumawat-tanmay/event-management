@@ -30,5 +30,19 @@ export const authService = {
   resetPassword: async (password: string, token: string) => {
     const response = await apiClient.put(`/auth/resetpassword/${token}`, { password });
     return response.data;
+  },
+
+  updateProfile: async (formData: FormData) => {
+    const response = await apiClient.put('/auth/profile', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
+  updatePassword: async (data: any) => {
+    const response = await apiClient.put('/auth/updatepassword', data);
+    return response.data;
   }
 };

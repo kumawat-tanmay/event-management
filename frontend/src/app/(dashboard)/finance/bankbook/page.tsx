@@ -1,1 +1,5 @@
-export default function Placeholder() { return <div className='p-8 flex items-center justify-center h-screen text-muted-foreground'>Coming Soon...</div>; }
+import { BankbookView } from '@/components/dashboard/finance/bankbook/BankbookView';
+
+export default function BankbookPage() {
+  return <BankbookView />;
+}

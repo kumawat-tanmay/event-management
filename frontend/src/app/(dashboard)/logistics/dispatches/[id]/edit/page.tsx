@@ -1,1 +1,11 @@
-export default function Page() { return <div className="p-8 flex items-center justify-center h-screen text-muted-foreground">Page Coming Soon...</div>; }
+import React from 'react';
+import { DispatchForm } from '@/components/dashboard/logistics/dispatches/DispatchForm';
+
+interface PageProps {
+  params: Promise<{ id: string }>;
+}
+
+export default async function EditDispatchPage({ params }: PageProps) {
+  const resolvedParams = await params;
+  return <DispatchForm dispatchId={resolvedParams.id} />;
+}

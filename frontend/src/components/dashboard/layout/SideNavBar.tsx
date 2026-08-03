@@ -46,6 +46,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { WarehouseSwitcher } from './WarehouseSwitcher';
+import useSWR from 'swr';
+import { settingsService } from '@/lib/services/settings.services';
 
 interface NavLink {
   name: string;
@@ -56,10 +58,9 @@ interface NavLink {
   children?: NavLink[];
 }
 
-const erpNavLinks: NavLink[] = [
+export const erpNavLinks: NavLink[] = [
   { name: 'Dashboard', tKey: 'sidebar.dashboard', href: '/', icon: Home, permission: 'dashboard.view' },
   { name: 'Calendar', tKey: 'sidebar.calendar', href: '/calendar', icon: CalendarDays, permission: 'operations.view' },
-  { name: 'Messages', tKey: 'sidebar.messages', href: '/chat', icon: MessageSquare },
   {
     name: 'CRM & Parties',
     tKey: 'sidebar.crm',
@@ -92,10 +93,8 @@ const erpNavLinks: NavLink[] = [
     permission: 'operations.view',
     children: [
       { name: 'Events List', tKey: 'sidebar.eventsList', href: '/events/list', icon: CalendarDays, permission: 'operations.view' },
-      { name: 'Event Planning', tKey: 'sidebar.eventPlanning', href: '/events/planner', icon: ClipboardList, permission: 'operations.view' },
-      { name: 'Packing & Dispatch', tKey: 'sidebar.packing', href: '/events/packing', icon: Box, permission: 'operations.view' },
       { name: 'Site Verification', tKey: 'sidebar.verification', href: '/events/verification', icon: ShieldCheck, permission: 'operations.view' },
-      { name: 'Return & Damages', tKey: 'sidebar.returns', href: '/events/return', icon: RotateCcw, permission: 'operations.view' },
+      { name: 'Return & Settlement', tKey: 'sidebar.returns', href: '/events/return', icon: RotateCcw, permission: 'operations.view' },
     ]
   },
   {
@@ -106,6 +105,7 @@ const erpNavLinks: NavLink[] = [
     permission: 'inventory.view',
     children: [
       { name: 'Items', tKey: 'sidebar.items', href: '/inventory/items', icon: Box, permission: 'inventory.view' },
+      { name: 'Zones & Racks', tKey: 'sidebar.layout', href: '/inventory/warehouse-layout', icon: Sliders, permission: 'inventory.view' },
       { name: 'Ledger', tKey: 'sidebar.ledger', href: '/inventory/ledger', icon: FileText, permission: 'inventory.view' },
     ]
   },
@@ -116,7 +116,6 @@ const erpNavLinks: NavLink[] = [
     icon: UserCog,
     permission: 'hr.view',
     children: [
-      { name: 'Team / Staff', tKey: 'sidebar.team', href: '/hr/team', icon: Users, permission: 'hr.view' },
       { name: 'Staff Records', tKey: 'sidebar.staff', href: '/hr/staff', icon: UserCog, permission: 'hr.view' },
       { name: 'Vehicles', tKey: 'sidebar.vehicles', href: '/hr/vehicles', icon: Car, permission: 'hr.view' },
     ]
@@ -152,13 +151,7 @@ const erpNavLinks: NavLink[] = [
     tKey: 'sidebar.analytics',
     href: '/reports',
     icon: PieChart,
-    permission: 'reports.view',
-    children: [
-      { name: 'Overview', tKey: 'sidebar.overview', href: '/reports', icon: TrendingUp, permission: 'reports.view' },
-      { name: 'Event Profitability', tKey: 'sidebar.profitability', href: '/reports/event-profitability', icon: BarChart3, permission: 'reports.view' },
-      { name: 'Damage Report', tKey: 'sidebar.damage', href: '/reports/damage', icon: AlertTriangle, permission: 'reports.view' },
-      { name: 'GST Report', tKey: 'sidebar.gst', href: '/reports/gst', icon: ReceiptText, permission: 'reports.view' },
-    ]
+    permission: 'reports.view'
   },
   {
     name: 'Settings',
@@ -168,11 +161,10 @@ const erpNavLinks: NavLink[] = [
     icon: Settings,
     permission: 'users.view',
     children: [
+      { name: 'Company Profile', tKey: 'sidebar.company', href: '/settings/company', icon: Building2 },
       { name: 'Profile', tKey: 'sidebar.profile', href: '/settings/profile', icon: UserCircle },
-      { name: 'Company', tKey: 'sidebar.company', href: '/settings/company', icon: Building2 },
-      { name: 'Users', tKey: 'sidebar.users', href: '/settings/users', icon: Users, permission: 'users.view' },
       { name: 'Roles & Permissions', tKey: 'sidebar.roles', href: '/settings/roles', icon: ShieldCheck, permission: 'roles.view' },
-      { name: 'Preferences', tKey: 'sidebar.preferences', href: '/settings/preferences', icon: Sliders },
+      { name: 'Invite User', tKey: 'sidebar.users', href: '/settings/users', icon: Users, permission: 'users.view' },
     ]
   },
 ];
@@ -239,6 +231,10 @@ export function SideNavBar({ isOpen, onClose }: SideNavBarProps) {
     });
   }, [pathname, authorizedLinks]);
 
+  const { data: companyData } = useSWR('/settings/company', () => settingsService.getCompany());
+  const companyName = companyData?.name || 'Krishna Tent & Events';
+  const companyLogo = companyData?.logo;
+
   return (
     <>
       {/* Mobile Overlay */}
@@ -256,13 +252,24 @@ export function SideNavBar({ isOpen, onClose }: SideNavBarProps) {
 
         {/* Header: Brand + Close */}
         <div className="mb-6 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center font-bold text-white shadow-lg shadow-primary/20 shrink-0">
-              <Building2 className="w-5 h-5" />
-            </div>
+          <div className="flex items-center gap-3 min-w-0">
+            {companyLogo ? (
+              <div className="w-10 h-10 rounded-xl bg-card border border-border/60 overflow-hidden shadow-sm shrink-0 flex items-center justify-center">
+                {/* eslint-disable-next-next/no-img-element */}
+                <img src={companyLogo} alt={companyName} className="w-full h-full object-cover" />
+              </div>
+            ) : (
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#8a5a32] to-[#6b4627] text-white flex items-center justify-center font-black text-lg shadow-md shrink-0">
+                <Building2 className="w-5 h-5" />
+              </div>
+            )}
             <div className="min-w-0">
-              <div className="text-sm font-black text-foreground tracking-tight truncate max-w-[140px]">Krishna</div>
-              <div className="text-[9px] font-bold text-primary uppercase tracking-widest">Tent & Events ERP</div>
+              <div className="text-sm font-black text-foreground tracking-tight truncate max-w-[140px]" title={companyName}>
+                {companyName}
+              </div>
+              <div className="text-[9px] font-bold text-primary uppercase tracking-widest">
+                ERP System
+              </div>
             </div>
           </div>
 
@@ -319,16 +326,37 @@ export function SideNavBar({ isOpen, onClose }: SideNavBarProps) {
                       "w-5 h-5 transition-transform duration-300",
                       isChildActive || isActive ? "text-primary" : "text-muted-foreground group-hover:text-primary"
                     )} />
-                    <span className="text-sm font-semibold flex-1 text-left">{t(link.tKey)}</span>
+                    <span className="text-sm font-semibold flex-1 text-left">{t(link.tKey, link.name)}</span>
                     <ChevronDown className={cn(
                       "w-4 h-4 transition-transform duration-300",
                       isExpanded ? "rotate-180" : ""
                     )} />
                   </button>
+                ) : link.href.startsWith('http') ? (
+                  <a
+                    href={link.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => {
+                      setOpenSubMenus([]);
+                      if (typeof window !== 'undefined' && window.innerWidth < 768) onClose();
+                    }}
+                    className={cn(
+                      "group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 hover:translate-x-1",
+                      "text-muted-foreground hover:bg-muted/50 hover:text-foreground hover:text-emerald-600 dark:hover:text-emerald-400"
+                    )}
+                  >
+                    <Icon className={cn(
+                      "w-5 h-5 transition-transform duration-300 group-hover:scale-110",
+                      "text-muted-foreground group-hover:text-emerald-500"
+                    )} />
+                    <span className="text-sm font-semibold flex-1">{t(link.tKey, link.name)}</span>
+                  </a>
                 ) : (
                   <Link
                     href={link.href}
                     onClick={() => {
+                      setOpenSubMenus([]);
                       if (typeof window !== 'undefined' && window.innerWidth < 768) onClose();
                     }}
                     className={cn(
@@ -342,7 +370,7 @@ export function SideNavBar({ isOpen, onClose }: SideNavBarProps) {
                       "w-5 h-5 transition-transform duration-300 group-hover:scale-110",
                       isActive ? "text-primary" : "text-muted-foreground group-hover:text-primary"
                     )} />
-                    <span className="text-sm font-semibold flex-1">{t(link.tKey)}</span>
+                    <span className="text-sm font-semibold flex-1">{t(link.tKey, link.name)}</span>
                   </Link>
                 )}
 
@@ -367,7 +395,7 @@ export function SideNavBar({ isOpen, onClose }: SideNavBarProps) {
                           )}
                         >
                           <ChildIcon className="w-4 h-4" />
-                          <span>{t(child.tKey)}</span>
+                          <span>{t(child.tKey, child.name)}</span>
                         </Link>
                       );
                     })}

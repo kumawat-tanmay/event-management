@@ -1,1 +1,10 @@
-export default function Placeholder() { return <div className='p-8 flex items-center justify-center h-screen text-muted-foreground'>Coming Soon...</div>; }
+import React from 'react';
+import { StockTransferForm } from '@/components/dashboard/logistics/transfer/StockTransferForm';
+
+export const metadata = {
+  title: 'Request Stock Transfer | Krishna Events ERP',
+};
+
+export default function NewTransferPage() {
+  return <StockTransferForm />;
+}

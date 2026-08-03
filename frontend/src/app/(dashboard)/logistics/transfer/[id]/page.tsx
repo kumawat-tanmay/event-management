@@ -1,1 +1,10 @@
-export default function Page() { return <div className="p-8 flex items-center justify-center h-screen text-muted-foreground">Page Coming Soon...</div>; }
+import React from 'react';
+import { TransferDetailView } from '@/components/dashboard/logistics/transfer/TransferDetailView';
+
+export const metadata = {
+  title: 'Stock Transfer Details | Krishna Events ERP',
+};
+
+export default function TransferDetailPage() {
+  return <TransferDetailView />;
+}

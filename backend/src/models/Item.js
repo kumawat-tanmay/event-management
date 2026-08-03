@@ -12,10 +12,6 @@ const warehouseStockSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
-  reserved: {
-    type: Number,
-    default: 0
-  },
   dispatched: {
     type: Number,
     default: 0
@@ -39,11 +35,6 @@ const itemSchema = new mongoose.Schema({
     uppercase: true,
     trim: true
   },
-  category: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Category',
-    required: true
-  },
   description: {
     type: String,
     trim: true
@@ -65,10 +56,6 @@ const itemSchema = new mongoose.Schema({
     default: 0
   },
   availableStock: {
-    type: Number,
-    default: 0
-  },
-  reservedStock: {
     type: Number,
     default: 0
   },
@@ -106,9 +93,8 @@ const itemSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 // Duplicate index removed
-itemSchema.index({ isDeleted: 1, category: 1 });
 itemSchema.index({ isDeleted: 1, isActive: 1 });
-itemSchema.index({ category: 1 });
+itemSchema.index({ isDeleted: 1, createdAt: -1 }); // Performance fix for getItems aggregation sort
 itemSchema.index({ name: 'text', description: 'text' });
 
 const Item = mongoose.model('Item', itemSchema);

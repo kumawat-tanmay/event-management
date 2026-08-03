@@ -1,1 +1,8 @@
-export default function Page() { return <div className="p-8 flex items-center justify-center h-screen text-muted-foreground">Page Coming Soon...</div>; }
+'use client';
+
+import React from 'react';
+import { VehicleForm } from '@/components/dashboard/hr/vehicles/VehicleForm';
+
+export default function NewVehiclePage() {
+  return <VehicleForm isEdit={false} />;
+}

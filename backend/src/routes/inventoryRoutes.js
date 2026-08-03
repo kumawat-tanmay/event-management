@@ -1,12 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const {
-  // Categories
-  getCategories,
-  getCategoryById,
-  createCategory,
-  updateCategory,
-  deleteCategory,
+
   // Items
   getItems,
   getItemById,
@@ -22,18 +17,12 @@ const {
 const { protect } = require('../middlewares/authMiddleware');
 const requirePermission = require('../middlewares/requirePermission');
 const validate = require('../middlewares/validate');
-const { createCategorySchema, updateCategorySchema, createItemSchema, updateItemSchema } = require('../validators/inventoryValidator');
+const { createItemSchema, updateItemSchema } = require('../validators/inventoryValidator');
 
 // Base route: /api/inventory
 // All routes are protected
 router.use(protect);
 
-// Categories
-router.get('/categories', requirePermission('inventory.view'), getCategories);
-router.post('/categories', requirePermission('inventory.create'), validate(createCategorySchema), createCategory);
-router.get('/categories/:id', requirePermission('inventory.view'), getCategoryById);
-router.put('/categories/:id', requirePermission('inventory.update'), validate(updateCategorySchema), updateCategory);
-router.delete('/categories/:id', requirePermission('inventory.delete'), deleteCategory);
 
 // Items
 router.get('/items', requirePermission('inventory.view'), getItems);

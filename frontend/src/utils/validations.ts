@@ -103,22 +103,6 @@ export const getWarehouseSchema = (t: any) => z.object({
   isDefault: z.boolean().default(false),
 });
 
-// ─── Category Schema Builder ─────────────────────────────────────────────────
-export const getCategorySchema = (t: any) => z.object({
-  name: z.string({ message: t('validation.categoryNameRequired', 'Category name is required') })
-    .min(2, t('validation.categoryNameMin', 'Category name must be at least 2 characters'))
-    .max(100, t('validation.categoryNameMax', 'Category name must be less than 100 characters'))
-    .transform(val => val.trim()),
-  code: z.string()
-    .max(10, t('validation.categoryCodeMax', 'Code must be less than 10 characters'))
-    .transform(val => val.trim().toUpperCase())
-    .optional(),
-  description: z.string()
-    .max(500, t('validation.descriptionMax', 'Description must be less than 500 characters'))
-    .optional(),
-  status: z.enum(['Active', 'Inactive']).default('Active'),
-});
-
 // ─── Item Master Schema Builder ──────────────────────────────────────────────
 export const getItemSchema = (t: any) => z.object({
   name: z.string({ message: t('validation.itemNameRequired', 'Item name is required') })
@@ -129,8 +113,6 @@ export const getItemSchema = (t: any) => z.object({
     .max(30, t('validation.itemCodeMax', 'SKU code must be less than 30 characters'))
     .transform(val => val.trim().toUpperCase())
     .optional(),
-  category: z.string({ message: t('validation.categoryRequired', 'Category is required') })
-    .min(1, t('validation.categoryRequired', 'Please select a category')),
   description: z.string()
     .max(1000, t('validation.itemDescriptionMax', 'Description must be less than 1000 characters'))
     .optional(),
@@ -190,6 +172,96 @@ export const getSiteVisitSchema = (t: any) => z.object({
   venueAddress: z.string({ message: t('validation.venueAddressRequired', 'Venue address is required') })
     .min(5, t('validation.venueAddressMin', 'Venue address must be at least 5 characters')),
   notes: z.string().optional(),
+});
+
+// ─── Dispatch Slip Schema Builder ────────────────────────────────────────────
+export const getDispatchSchema = (t: any) => z.object({
+  bookingId: z.string({ message: t('validation.bookingRequired', 'Please select a booking event') })
+    .min(1, t('validation.bookingRequired', 'Please select a booking event')),
+  warehouseId: z.string({ message: t('validation.warehouseRequired', 'Please select a source warehouse') })
+    .min(1, t('validation.warehouseRequired', 'Please select a source warehouse')),
+  driverName: z.string({ message: t('validation.driverNameRequired', 'Driver name is required') })
+    .min(2, t('validation.driverNameMin', 'Driver name must be at least 2 characters')),
+  driverPhone: z.string({ message: t('validation.driverPhoneRequired', 'Driver phone number is required') })
+    .min(10, t('validation.phoneMin', 'Phone number must be at least 10 digits')),
+  vehicleNumber: z.string({ message: t('validation.vehicleNumberRequired', 'Vehicle number is required') })
+    .min(3, t('validation.vehicleNumberMin', 'Vehicle number must be at least 3 characters')),
+  gatePassNumber: z.string().optional(),
+});
+
+// ─── Stock Transfer Schema Builder ───────────────────────────────────────────
+export const getWarehouseTransferSchema = (t: any) => z.object({
+  fromWarehouse: z.string({ message: t('validation.fromWarehouseRequired', 'Source warehouse is required') })
+    .min(1, t('validation.fromWarehouseRequired', 'Source warehouse is required')),
+  toWarehouse: z.string({ message: t('validation.toWarehouseRequired', 'Destination warehouse is required') })
+    .min(1, t('validation.toWarehouseRequired', 'Destination warehouse is required')),
+  remarks: z.string().optional(),
+}).refine(data => data.fromWarehouse !== data.toWarehouse, {
+  message: t('validation.warehousesMustBeDifferent', 'Source and destination warehouses must be different'),
+  path: ['toWarehouse'],
+});
+
+// ─── Phase 8 Event Execution & Return Schemas ────────────────────────────────
+export const getSiteReceiptSchema = (t: any) => z.object({
+  bookingId: z.string({ message: t('validation.bookingRequired', 'Please select a booking event') })
+    .min(1, t('validation.bookingRequired', 'Please select a booking event')),
+  materialCondition: z.enum(['OK', 'Damaged', 'Shortage']).default('OK'),
+  remarks: z.string().optional(),
+  supervisorName: z.string().optional(),
+});
+
+export const getVerificationSchema = (t: any) => z.object({
+  bookingId: z.string({ message: t('validation.bookingRequired', 'Please select a booking event') })
+    .min(1, t('validation.bookingRequired', 'Please select a booking event')),
+  remarks: z.string().optional(),
+  supervisorName: z.string().optional(),
+});
+
+export const getReturnSchema = (t: any) => z.object({
+  bookingId: z.string({ message: t('validation.bookingRequired', 'Please select a booking event') })
+    .min(1, t('validation.bookingRequired', 'Please select a booking event')),
+  remarks: z.string().optional(),
+  supervisorName: z.string().optional(),
+});
+
+// ─── HR Module Schemas ────────────────────────────────────────────────────────
+
+/**
+ * Staff form validation schema builder
+ */
+export const getStaffSchema = (t: any) => z.object({
+  name: getNameField(t),
+  phone: getPhoneField(t),
+  email: z.string()
+    .email(t('validation.emailInvalid', 'Please enter a valid email address'))
+    .optional()
+    .or(z.literal('')),
+  role: z.enum(['Driver', 'Event Supervisor', 'Godown Manager', 'Labour', 'Accountant', 'Other']),
+  compensationType: z.enum(['daily', 'monthly']),
+  basePay: z.number({ message: t('validation.basePayNumber', 'Base pay rate must be a number') })
+    .min(0, t('validation.basePayMin', 'Base pay rate cannot be negative')),
+  status: z.enum(['Active', 'Inactive', 'On Leave']),
+  pendingDues: z.number({ message: t('validation.pendingDuesNumber', 'Pending dues must be a number') })
+    .min(0, t('validation.pendingDuesMin', 'Pending dues cannot be negative'))
+    .optional(),
+});
+
+/**
+ * Vehicle form validation schema builder
+ */
+export const getVehicleSchema = (t: any) => z.object({
+  name: z.string({ message: t('validation.vehicleModelRequired', 'Vehicle model name is required') })
+    .min(2, t('validation.vehicleModelMin', 'Model name must be at least 2 characters'))
+    .max(100, t('validation.vehicleModelMax', 'Model name must be less than 100 characters')),
+  plateNumber: z.string({ message: t('validation.plateNumberRequired', 'Plate number is required') })
+    .min(3, t('validation.plateNumberMin', 'Plate number must be at least 3 characters'))
+    .max(20, t('validation.plateNumberMax', 'Plate number must be less than 20 characters'))
+    .regex(/^[A-Z0-9\s\-]+$/i, t('validation.plateNumberInvalid', 'Please enter a valid plate number')),
+  type: z.enum(['Pickup 407', 'Tata Ace', 'Heavy Truck', 'Bolero', 'Van', 'Tractor', 'Other']),
+  capacity: z.string().optional().nullable().or(z.literal('')),
+  assignedDriverId: z.string().nullable().optional(),
+  status: z.enum(['available', 'on_dispatch', 'maintenance']),
+  ownership: z.enum(['company', 'rented']),
 });
 
 

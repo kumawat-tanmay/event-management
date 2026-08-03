@@ -10,6 +10,7 @@ interface ConfirmModalProps {
   message: string;
   confirmText?: string;
   cancelText?: string;
+  isDestructive?: boolean;
 }
 
 export function ConfirmModal({
@@ -19,7 +20,8 @@ export function ConfirmModal({
   title,
   message,
   confirmText = 'Delete',
-  cancelText = 'Cancel'
+  cancelText = 'Cancel',
+  isDestructive = true
 }: ConfirmModalProps) {
   if (!isOpen) return null;
 
@@ -28,7 +30,7 @@ export function ConfirmModal({
       <div className="bg-card border border-border shadow-xl rounded-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         <div className="flex justify-between items-center p-4 border-b border-border/50">
           <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
-            <AlertTriangle className="w-5 h-5 text-red-500" />
+            <AlertTriangle className={`w-5 h-5 ${isDestructive ? 'text-red-500' : 'text-amber-500'}`} />
             {title}
           </h3>
           <button onClick={onClose} className="p-1 rounded-full text-muted-foreground hover:bg-muted transition-colors">
@@ -47,7 +49,7 @@ export function ConfirmModal({
           <Button variant="primary" onClick={() => {
             onConfirm();
             onClose();
-          }} className="bg-red-600 hover:bg-red-700 text-white border-none">
+          }} className={isDestructive ? "bg-red-600 hover:bg-red-700 text-white border-none" : "bg-amber-600 hover:bg-amber-700 text-white border-none"}>
             {confirmText}
           </Button>
         </div>

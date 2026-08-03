@@ -1,5 +1,5 @@
-import { SiteReceiptForm } from '@/components/dashboard/events/forms/SiteReceiptForm';
+import { EventDetailView } from '@/components/dashboard/events/views/EventDetailView';
 
 export default function VerificationDetailPage() {
-  return <SiteReceiptForm />;
+  return <EventDetailView />;
 }

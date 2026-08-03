@@ -1,6 +1,7 @@
 const Customer = require('../models/Customer');
 const Lead = require('../models/Lead');
 const SiteVisit = require('../models/SiteVisit');
+const Counter = require('../models/Counter');
 
 // Helper to clean empty string ObjectId & Date fields
 const sanitizeCrmPayload = (body) => {
@@ -29,9 +30,11 @@ const getCustomers = async (req, res) => {
     }
 
     if (search) {
+      const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       query.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { phone: { $regex: search, $options: 'i' } }
+        { name: { $regex: escapedSearch, $options: 'i' } },
+        { phone: { $regex: escapedSearch, $options: 'i' } },
+        { email: { $regex: escapedSearch, $options: 'i' } }
       ];
     }
 
@@ -150,7 +153,7 @@ const deleteCustomer = async (req, res) => {
 // @route   GET /api/crm/leads
 const getLeads = async (req, res) => {
   try {
-    const { stage, search, phone, customerName } = req.query;
+    const { stage, search, phone, customerName, page = 1, limit = 50 } = req.query;
     const query = { isDeleted: false };
 
     if (stage && stage !== 'ALL LEADS') {
@@ -159,26 +162,31 @@ const getLeads = async (req, res) => {
 
     // ponytail: server-side filters to avoid full-collection client downloads
     if (phone) {
-      query.phone = { $regex: phone, $options: 'i' };
+      query.phone = phone; // exact match
     }
     if (customerName) {
-      query.customerName = { $regex: `^${customerName}$`, $options: 'i' };
+      query.customerName = customerName; // exact match
     }
 
     if (search) {
+      const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       query.$or = [
-        { customerName: { $regex: search, $options: 'i' } },
-        { phone: { $regex: search, $options: 'i' } },
-        { leadId: { $regex: search, $options: 'i' } }
+        { customerName: { $regex: escapedSearch, $options: 'i' } },
+        { phone: { $regex: escapedSearch, $options: 'i' } },
+        { leadId: { $regex: escapedSearch, $options: 'i' } }
       ];
     }
 
+    const skip = (Number(page) - 1) * Number(limit);
+    const total = await Lead.countDocuments(query);
     const data = await Lead.find(query)
       .populate('assignedStaff', 'name email')
       .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(Number(limit))
       .lean();
 
-    res.json({ success: true, data });
+    res.json({ success: true, data, pagination: { total, page: Number(page), pages: Math.ceil(total / Number(limit)) } });
   } catch (error) {
     console.error('Error fetching leads:', error);
     res.status(500).json({ success: false, message: 'Server Error' });
@@ -206,14 +214,13 @@ const getLeadById = async (req, res) => {
 const createLead = async (req, res) => {
   try {
     const cleanPayload = sanitizeCrmPayload(req.body);
-    // ponytail: race-safe sequential ID using last doc sort instead of countDocuments
-    const lastLead = await Lead.findOne().sort({ createdAt: -1 }).select('leadId').lean();
-    let nextNum = 1001;
-    if (lastLead && lastLead.leadId) {
-      const parsed = parseInt(lastLead.leadId.replace('LD-', ''), 10);
-      if (!isNaN(parsed)) nextNum = parsed + 1;
-    }
-    const leadId = `LD-${nextNum}`;
+
+    const counter = await Counter.findOneAndUpdate(
+      { id: 'leadId' },
+      { $inc: { seq: 1 } },
+      { new: true, upsert: true }
+    );
+    const leadId = `LD-${counter.seq}`;
 
     // Auto-sync customer to Customer directory if phone not already registered
     if (cleanPayload.customerName && cleanPayload.phone) {
@@ -287,27 +294,31 @@ const deleteLead = async (req, res) => {
 // @route   GET /api/crm/site-visits
 const getSiteVisits = async (req, res) => {
   try {
-    const { phone, customerName, leadId } = req.query;
+    const { phone, customerName, leadId, page = 1, limit = 50 } = req.query;
     const query = { isDeleted: false };
 
     // ponytail: server-side filters to avoid full-collection client downloads
     if (phone) {
-      query.phone = { $regex: phone, $options: 'i' };
+      query.phone = phone; // exact match
     }
     if (customerName) {
-      query.customerName = { $regex: `^${customerName}$`, $options: 'i' };
+      query.customerName = customerName; // exact match
     }
     if (leadId) {
       query.lead = leadId;
     }
 
+    const skip = (Number(page) - 1) * Number(limit);
+    const total = await SiteVisit.countDocuments(query);
     const data = await SiteVisit.find(query)
       .populate('assignedStaff', 'name email')
       .populate('lead', 'leadId eventType')
       .sort({ visitDate: -1 })
+      .skip(skip)
+      .limit(Number(limit))
       .lean();
 
-    res.json({ success: true, data });
+    res.json({ success: true, data, pagination: { total, page: Number(page), pages: Math.ceil(total / Number(limit)) } });
   } catch (error) {
     console.error('Error fetching site visits:', error);
     res.status(500).json({ success: false, message: 'Server Error' });

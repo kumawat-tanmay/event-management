@@ -9,7 +9,7 @@ const lineItemSchema = new mongoose.Schema({
   item: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Item',
-    required: true
+    required: false
   },
   itemName: {
     type: String,
@@ -25,31 +25,10 @@ const lineItemSchema = new mongoose.Schema({
     type: String,
     default: 'Pieces'
   },
-  rentalRate: {
-    type: Number,
-    required: true,
-    min: 0
-  },
   quantity: {
     type: Number,
     required: true,
     min: 1
-  },
-  duration: {
-    type: Number,
-    required: true,
-    min: 1
-  },
-  discount: {
-    type: Number,
-    default: 0,
-    min: 0,
-    max: 100
-  },
-  totalAmount: {
-    type: Number,
-    required: true,
-    min: 0
   }
 }, { _id: false });
 

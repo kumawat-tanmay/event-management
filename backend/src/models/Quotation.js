@@ -64,6 +64,12 @@ const quotationSchema = new mongoose.Schema({
     default: 0,
     min: 0
   },
+  discount: {
+    type: Number,
+    default: 0,
+    min: 0,
+    max: 100
+  },
   taxRate: {
     type: Number,
     default: 18,

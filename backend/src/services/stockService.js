@@ -85,14 +85,14 @@ const checkMultiWarehouseAvailability = async (requestedItems, startDate, endDat
   // Fetch all active warehouses
   const warehouses = await Warehouse.find({ isDeleted: false }).lean();
 
-  // Fetch all requested items with their warehouse stock
-  const itemIds = requestedItems.map(ri => ri.item);
+  // Fetch all requested items with their warehouse stock (filtering out invalid item IDs)
+  const itemIds = requestedItems.filter(ri => ri.item).map(ri => ri.item);
   const items = await Item.find({ _id: { $in: itemIds }, isDeleted: false })
     .populate('category', 'name')
     .lean();
 
   const availability = await Promise.all(requestedItems.map(async (requested) => {
-    const itemData = items.find(i => i._id.toString() === requested.item.toString());
+    const itemData = items.find(i => i._id.toString() === (requested.item ? requested.item.toString() : ''));
 
     if (!itemData) {
       return {

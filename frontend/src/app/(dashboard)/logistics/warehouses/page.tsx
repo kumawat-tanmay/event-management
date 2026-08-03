@@ -1,5 +1,5 @@
 import React from 'react';
-import WarehousesView from '@/components/dashboard/logistics-group/warehouses/WarehousesView';
+import WarehousesView from '@/components/dashboard/logistics/warehouses/WarehousesView';
 
 export const metadata = {
   title: 'Warehouses | Krishna Tent & Events ERP',

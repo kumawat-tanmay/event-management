@@ -61,5 +61,11 @@ export const warehouseService = {
 
   deleteWarehouse: async (id: string): Promise<void> => {
     await apiClient.delete(`/warehouses/${id}`);
+  },
+
+  bulkImportLayout: async (id: string, payload: { zones: Zone[]; mode?: 'merge' | 'replace' }): Promise<Warehouse> => {
+    const res = await apiClient.post(`/warehouses/${id}/bulk-import-layout`, payload);
+    return res.data.data;
   }
 };
+

@@ -1,38 +1,43 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { cn } from '@/utils/cn';
 import { Store, ChevronDown, CheckCircle2, Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-
-interface WarehouseData {
-  id: string;
-  name: string;
-  tKey?: string;
-  status: 'Online' | 'Low Stock' | 'Offline';
-}
-
-const STATIC_WAREHOUSES: WarehouseData[] = [
-  { id: 'all', name: 'All Warehouses', tKey: 'warehouse.allWarehouses', status: 'Online' },
-  { id: '1', name: 'Main Warehouse', tKey: 'sidebar.warehouses', status: 'Online' },
-  { id: '2', name: 'Jaipur Warehouse', status: 'Online' },
-  { id: '3', name: 'Ajmer Warehouse', status: 'Low Stock' },
-  { id: '4', name: 'Jodhpur Warehouse', status: 'Online' },
-];
+import useSWR from 'swr';
+import { warehouseService, Warehouse } from '@/lib/services/warehouse.services';
+import { useRouter, usePathname } from 'next/navigation';
 
 export function WarehouseSwitcher() {
   const { t } = useTranslation();
+  const router = useRouter();
+  const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
-  const [activeWarehouse, setActiveWarehouse] = useState<WarehouseData>(STATIC_WAREHOUSES[0]);
+  
+  const { data: warehouses = [], isLoading } = useSWR<Warehouse[]>(
+    'warehouses', 
+    warehouseService.getWarehouses
+  );
 
-  const handleSwitch = (warehouse: WarehouseData) => {
-    setActiveWarehouse(warehouse);
+  const [activeId, setActiveId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const match = pathname.match(/\/inventory\/warehouse-layout\/([a-zA-Z0-9_-]+)/);
+    if (match && match[1]) {
+      setActiveId(match[1]);
+    }
+  }, [pathname]);
+
+  const activeWarehouse = warehouses.find(w => w._id === activeId) || warehouses[0] || null;
+
+  const handleSwitch = (wh: Warehouse) => {
+    setActiveId(wh._id);
     setIsOpen(false);
+    router.push(`/inventory/warehouse-layout/${wh._id}`);
   };
 
-  const getStatusText = (status: string) => {
-    if (status === 'Online') return t('warehouse.active', 'Online');
-    if (status === 'Low Stock') return t('warehouse.lowStock', 'Low Stock');
+  const getStatusText = (isActive: boolean) => {
+    if (isActive) return t('warehouse.active', 'Online');
     return t('warehouse.inactive', 'Offline');
   };
 
@@ -54,7 +59,7 @@ export function WarehouseSwitcher() {
               {t('warehouse.status', 'Warehouse Status')}
             </span>
             <span className="text-sm font-bold truncate text-foreground leading-tight mt-0.5">
-              {activeWarehouse.tKey ? t(activeWarehouse.tKey) : activeWarehouse.name}
+              {isLoading ? 'Loading...' : activeWarehouse ? activeWarehouse.name : 'No Warehouses'}
             </span>
           </div>
         </div>
@@ -79,13 +84,13 @@ export function WarehouseSwitcher() {
             </p>
           </div>
 
-          {STATIC_WAREHOUSES.map((wh) => (
+          {warehouses.length > 0 ? warehouses.map((wh) => (
             <button
-              key={wh.id}
+              key={wh._id}
               onClick={() => handleSwitch(wh)}
               className={cn(
                 "w-full flex flex-col px-4 py-2 text-left transition-colors cursor-pointer",
-                wh.id === activeWarehouse.id
+                wh._id === activeWarehouse?._id
                   ? "bg-primary/10"
                   : "hover:bg-muted/40"
               )}
@@ -93,38 +98,44 @@ export function WarehouseSwitcher() {
               <div className="flex items-center justify-between w-full">
                 <span className={cn(
                   "text-sm font-bold truncate",
-                  wh.id === activeWarehouse.id ? "text-primary" : "text-foreground"
+                  wh._id === activeWarehouse?._id ? "text-primary" : "text-foreground"
                 )}>
-                  {wh.tKey ? t(wh.tKey) : wh.name}
+                  {wh.name}
                 </span>
-                {wh.id === activeWarehouse.id && (
+                {wh._id === activeWarehouse?._id && (
                   <CheckCircle2 size={14} className="text-primary shrink-0" />
                 )}
               </div>
               <div className="flex items-center gap-1.5 mt-1">
                 <span className={cn(
                   "w-1.5 h-1.5 rounded-full",
-                  wh.status === 'Online' ? "bg-emerald-500" :
-                  wh.status === 'Low Stock' ? "bg-amber-500" : "bg-muted-foreground"
+                  wh.isActive ? "bg-emerald-500" : "bg-muted-foreground"
                 )} />
                 <span className="text-xs text-muted-foreground">
-                  {getStatusText(wh.status)}
+                  {getStatusText(wh.isActive)}
                 </span>
               </div>
             </button>
-          ))}
+          )) : (
+            <div className="px-4 py-3 text-xs text-center text-muted-foreground">
+              {isLoading ? 'Loading warehouses...' : 'No warehouses found'}
+            </div>
+          )}
 
           {/* Add New Warehouse */}
           <div className="px-2 pt-1.5 mt-1 border-t border-border/50">
             <button
-              onClick={() => setIsOpen(false)}
+              onClick={() => {
+                setIsOpen(false);
+                router.push('/logistics/warehouses/new');
+              }}
               className="w-full flex items-center gap-3 px-3 py-2 text-left text-primary hover:bg-primary/10 transition-colors rounded-lg group cursor-pointer"
             >
               <div className="w-6 h-6 rounded-md bg-primary/20 flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:text-primary-foreground transition-all">
                 <Plus size={14} />
               </div>
               <span className="text-xs font-bold uppercase tracking-widest truncate">
-                {t('warehouse.addGodown')}
+                {t('warehouse.addGodown', 'Add New Godown')}
               </span>
             </button>
           </div>

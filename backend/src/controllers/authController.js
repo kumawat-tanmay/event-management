@@ -288,10 +288,100 @@ const resetPassword = async (req, res) => {
   }
 };
 
+// @desc    Update user profile (Name, Avatar)
+// @route   PUT /api/auth/profile
+// @access  Private
+const updateProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    if (req.body.name) {
+      user.name = req.body.name;
+    }
+
+    // Avatar upload
+    if (req.file) {
+      const { uploadToCloudinary } = require('../config/cloudinary');
+      try {
+        const cloudinaryResult = await uploadToCloudinary(req.file.buffer, 'avatars', 'image');
+        user.avatar = cloudinaryResult.secure_url;
+      } catch (err) {
+        return res.status(400).json({ success: false, message: 'Failed to upload image' });
+      }
+    }
+
+    await user.save({ validateBeforeSave: false });
+    const { roleName, permissions } = await resolveUserRoleAndPermissions(user);
+
+    res.json({
+      success: true,
+      message: 'Profile updated successfully',
+      data: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: roleName,
+        permissions: permissions,
+        avatar: user.avatar || null,
+        token: generateToken(user._id)
+      }
+    });
+  } catch (error) {
+    console.error('Update Profile Error:', error);
+    res.status(500).json({ success: false, message: 'Server Error' });
+  }
+};
+
+// @desc    Update user password
+// @route   PUT /api/auth/updatepassword
+// @access  Private
+const updatePassword = async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  try {
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    // Check current password
+    if (!user.password) {
+       return res.status(400).json({ success: false, message: 'Cannot update password for Google Auth user without existing password.' });
+    }
+    const isMatch = await user.matchPassword(currentPassword);
+    if (!isMatch) {
+      return res.status(401).json({ success: false, message: 'Incorrect current password' });
+    }
+
+    if (!newPassword || newPassword.length < 6) {
+      return res.status(400).json({ success: false, message: 'New password must be at least 6 characters' });
+    }
+
+    user.password = newPassword;
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'Password updated successfully',
+      data: {
+        token: generateToken(user._id)
+      }
+    });
+  } catch (error) {
+    console.error('Update Password Error:', error);
+    res.status(500).json({ success: false, message: 'Server Error' });
+  }
+};
+
 module.exports = {
   loginUser,
   getMe,
   googleAuth,
   forgotPassword,
   resetPassword,
+  updateProfile,
+  updatePassword
 };

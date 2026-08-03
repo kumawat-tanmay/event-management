@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from 'react';
 import { useTheme } from 'next-themes';
 import { Sun, Moon } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { usePathname } from 'next/navigation';
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
@@ -31,18 +30,9 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         )}
       </div>
       
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={pathname}
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 20 }}
-          transition={{ duration: 0.4, ease: "easeOut" }}
-          className="min-h-screen w-full flex flex-col"
-        >
-          {children}
-        </motion.div>
-      </AnimatePresence>
+      <div className="min-h-screen w-full flex flex-col animate-fadeIn">
+        {children}
+      </div>
     </div>
   );
 }

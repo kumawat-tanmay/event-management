@@ -10,6 +10,7 @@ import { StatusBadge } from '@/components/common/StatusBadge';
 import { StatsCard } from '@/components/common/StatsCard';
 import { ConfirmModal } from '@/components/common/ConfirmModal';
 import { quotationService, Quotation, QuotationStats } from '@/lib/services/quotation.services';
+import { ActionGuard } from '@/components/auth/ActionGuard';
 
 export function QuotationsView() {
   const { t } = useTranslation();
@@ -25,11 +26,7 @@ export function QuotationsView() {
   const fetchQuotations = useCallback(async () => {
     try {
       setLoading(true);
-      const statusFilter = activeTab !== 'ALL' ? activeTab.charAt(0) + activeTab.slice(1).toLowerCase() : undefined;
-      const response = await quotationService.getQuotations({
-        search: searchQuery || undefined,
-        status: statusFilter,
-      });
+      const response = await quotationService.getQuotations({ limit: 200 });
       setData(response.data);
       setStats(response.stats);
     } catch (error) {
@@ -37,11 +34,31 @@ export function QuotationsView() {
     } finally {
       setLoading(false);
     }
-  }, [activeTab, searchQuery]);
+  }, []);
 
   useEffect(() => {
     fetchQuotations();
   }, [fetchQuotations]);
+
+  const filteredData = React.useMemo(() => {
+    return data.filter(quote => {
+      if (activeTab === 'DRAFT' && quote.status !== 'Draft') return false;
+      if (activeTab === 'SENT' && quote.status !== 'Sent') return false;
+      if (activeTab === 'APPROVED' && quote.status !== 'Approved') return false;
+      if (activeTab === 'CONVERTED' && quote.status !== 'Converted') return false;
+
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        const qId = (quote.quotationId || '').toLowerCase();
+        const cust = (quote.customer?.name || '').toLowerCase();
+        const title = (quote.eventTitle || '').toLowerCase();
+        const venue = (quote.venueAddress || '').toLowerCase();
+        return qId.includes(q) || cust.includes(q) || title.includes(q) || venue.includes(q);
+      }
+
+      return true;
+    });
+  }, [data, activeTab, searchQuery]);
 
   const confirmDelete = async () => {
     if (quoteToDelete) {
@@ -117,24 +134,28 @@ export function QuotationsView() {
               <Eye className="w-4 h-4" />
             </Button>
           </Link>
-          <Link href={`/operations/quotations/${row._id}/edit`} title={t('quotation.editQuotation')}>
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors" disabled={row.status === 'Converted'}>
-              <Edit className="w-4 h-4" />
+          <ActionGuard permission="quotations.update">
+            <Link href={`/operations/quotations/${row._id}/edit`} title={t('quotation.editQuotation')}>
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors" disabled={row.status === 'Converted'}>
+                <Edit className="w-4 h-4" />
+              </Button>
+            </Link>
+          </ActionGuard>
+          <ActionGuard permission="quotations.delete">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => {
+                setQuoteToDelete(row._id);
+                setDeleteModalOpen(true);
+              }}
+              disabled={row.status === 'Converted'}
+              className="h-8 w-8 text-muted-foreground hover:text-error hover:bg-error/10 transition-colors"
+              title={t('crm.delete')}
+            >
+              <Trash2 className="w-4 h-4" />
             </Button>
-          </Link>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => {
-              setQuoteToDelete(row._id);
-              setDeleteModalOpen(true);
-            }}
-            disabled={row.status === 'Converted'}
-            className="h-8 w-8 text-muted-foreground hover:text-error hover:bg-error/10 transition-colors"
-            title={t('crm.delete')}
-          >
-            <Trash2 className="w-4 h-4" />
-          </Button>
+          </ActionGuard>
         </div>
       )
     },
@@ -154,12 +175,14 @@ export function QuotationsView() {
             <Download className="w-4 h-4" />
             {t('crm.download', 'Export')}
           </Button>
-          <Link href="/operations/quotations/new" className="flex-1 sm:flex-none w-full sm:w-auto">
-            <Button variant="primary" className="w-full flex items-center justify-center gap-2">
-              <Plus className="w-4 h-4 shrink-0" />
-              <span className="truncate">{t('quotation.newQuotation')}</span>
-            </Button>
-          </Link>
+          <ActionGuard permission="quotations.create">
+            <Link href="/operations/quotations/new" className="flex-1 sm:flex-none w-full sm:w-auto">
+              <Button variant="primary" className="w-full flex items-center justify-center gap-2">
+                <Plus className="w-4 h-4 shrink-0" />
+                <span className="truncate">{t('quotation.newQuotation')}</span>
+              </Button>
+            </Link>
+          </ActionGuard>
         </div>
       </div>
 
@@ -232,7 +255,7 @@ export function QuotationsView() {
         <div className="flex-1 overflow-auto">
           <DataTable
             columns={columns}
-            data={data}
+            data={filteredData}
           />
         </div>
       </div>

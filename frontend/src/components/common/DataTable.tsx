@@ -1,5 +1,6 @@
 import * as React from "react"
 import { cn } from "@/utils/cn"
+import { Pagination } from "./Pagination"
 
 const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableElement>>(
   ({ className, ...props }, ref) => (
@@ -73,31 +74,66 @@ TableCell.displayName = "TableCell"
 
 export interface DataTableProps {
   data: any[];
-  columns: { header: string; accessorKey: string; cell?: (row: any) => React.ReactNode }[];
+  columns: { header: string; accessorKey: string; cell?: (row: any) => React.ReactNode; className?: string; }[];
   searchPlaceholder?: string;
   itemsPerPage?: number;
   headerContent?: React.ReactNode;
   className?: string;
 }
 
-export function DataTable({ data, columns, headerContent, className }: DataTableProps) {
+export function DataTable({ data, columns, headerContent, className, itemsPerPage }: DataTableProps) {
+  const [currentPage, setCurrentPage] = React.useState(1);
+  const containerRef = React.useRef<HTMLDivElement>(null);
+
+  const envItemsPerPage = process.env.NEXT_PUBLIC_ITEMS_PER_PAGE 
+    ? parseInt(process.env.NEXT_PUBLIC_ITEMS_PER_PAGE, 10) 
+    : 10;
+  
+  const limit = itemsPerPage || envItemsPerPage;
+  const totalPages = Math.ceil(data.length / limit);
+
+  // Reset page to 1 when search or data changes
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [data]);
+
+  const paginatedData = React.useMemo(() => {
+    const startIndex = (currentPage - 1) * limit;
+    return data.slice(startIndex, startIndex + limit);
+  }, [data, currentPage, limit]);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    if (containerRef.current) {
+      containerRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
   return (
-    <div className={cn("p-4", className)}>
+    <div ref={containerRef} className={cn("p-4", className)}>
       {headerContent && <div className="mb-4">{headerContent}</div>}
       <Table>
         <TableHeader className="bg-muted/30">
           <TableRow>
             {columns.map((col, idx) => (
-              <TableHead key={idx}>{col.header}</TableHead>
+              <TableHead 
+                key={idx} 
+                className={cn(col.className, (col.accessorKey === 'actions' || col.header === 'Actions') ? "text-center" : "")}
+              >
+                {col.header}
+              </TableHead>
             ))}
           </TableRow>
         </TableHeader>
         <TableBody>
-          {data.length > 0 ? (
-            data.map((row, rowIdx) => (
+          {paginatedData.length > 0 ? (
+            paginatedData.map((row, rowIdx) => (
               <TableRow key={rowIdx}>
                 {columns.map((col, colIdx) => (
-                  <TableCell key={colIdx}>
+                  <TableCell 
+                    key={colIdx} 
+                    className={cn(col.className, (col.accessorKey === 'actions' || col.header === 'Actions') ? "text-center" : "")}
+                  >
                     {col.cell ? col.cell(row) : row[col.accessorKey]}
                   </TableCell>
                 ))}
@@ -112,6 +148,15 @@ export function DataTable({ data, columns, headerContent, className }: DataTable
           )}
         </TableBody>
       </Table>
+      {totalPages > 1 && (
+        <div className="mt-4 flex justify-center">
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={handlePageChange}
+          />
+        </div>
+      )}
     </div>
   );
 }

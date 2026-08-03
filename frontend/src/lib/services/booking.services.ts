@@ -3,15 +3,11 @@ import apiClient from '../apiClient';
 // ─── TypeScript Interfaces ──────────────────────────────────────────────────
 
 export interface BookingItem {
-  item: string;
+  item?: string | null;
   itemName: string;
   itemCode?: string;
   unit?: string;
-  rentalRate: number;
   quantity: number;
-  duration: number;
-  discount?: number;
-  totalAmount: number;
 }
 
 export interface Booking {
@@ -34,6 +30,7 @@ export interface Booking {
   advanceRequired: number;
   advancePaid: number;
   balanceAmount: number;
+  discount?: number;
   assignedSupervisor?: any;
   status: 'Draft' | 'Confirmed' | 'Planning' | 'InProgress' | 'Completed' | 'Cancelled';
   agreementSigned: boolean;

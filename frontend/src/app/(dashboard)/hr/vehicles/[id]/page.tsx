@@ -1,1 +1,8 @@
-export default function PlaceholderPage() { return <div className='p-8 flex items-center justify-center h-screen text-muted-foreground'>Coming Soon...</div>; }
+'use client';
+
+import React from 'react';
+import { VehicleDetailView } from '@/components/dashboard/hr/vehicles/VehicleDetailView';
+
+export default function VehicleDetailPage() {
+  return <VehicleDetailView />;
+}

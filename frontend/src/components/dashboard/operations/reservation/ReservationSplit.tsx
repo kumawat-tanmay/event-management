@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { Layers, ArrowLeft, RefreshCw, Save, CheckCircle2, AlertCircle, Unlock } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
+import { ConfirmModal } from '@/components/common/ConfirmModal';
 import useSWR from 'swr';
 import { reservationService } from '@/lib/services/reservation.services';
 import { warehouseService } from '@/lib/services/warehouse.services';
@@ -28,6 +29,11 @@ export function ReservationSplit() {
   const [warehouses, setWarehouses] = useState<any[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [reservationId, setReservationId] = useState<string | null>(null);
+
+  // Modal states
+  const [isShortageModalOpen, setIsShortageModalOpen] = useState(false);
+  const [isReleaseModalOpen, setIsReleaseModalOpen] = useState(false);
+  const [locksToSaveQueue, setLocksToSaveQueue] = useState<any[]>([]);
 
   // Set warehouses list once loaded
   useEffect(() => {
@@ -141,14 +147,18 @@ export function ReservationSplit() {
     });
 
     if (hasShortage) {
-      if (!window.confirm('Some items are imbalanced. Do you want to proceed with partial lock?')) {
-        return;
-      }
+      setLocksToSaveQueue(locksToSave);
+      setIsShortageModalOpen(true);
+      return;
     }
 
+    await executeSaveLocks(locksToSave);
+  };
+
+  const executeSaveLocks = async (locks: any[]) => {
     setIsProcessing(true);
     try {
-      await reservationService.lockStock(reservationId, locksToSave);
+      await reservationService.lockStock(reservationId!, locks);
       toast.success('Stock successfully locked!');
       mutate(); // refresh data to update status
     } catch (err: any) {
@@ -160,11 +170,13 @@ export function ReservationSplit() {
 
   const handleRelease = async () => {
     if (!reservationId) return;
-    if (!window.confirm('Are you sure you want to release all stock locks for this reservation?')) return;
-    
+    setIsReleaseModalOpen(true);
+  };
+
+  const executeRelease = async () => {
     setIsProcessing(true);
     try {
-      await reservationService.releaseStock(reservationId);
+      await reservationService.releaseStock(reservationId!);
       toast.success('Stock locks released successfully!');
       setWarehouses([]);
       mutate(); // refresh data to update status
@@ -364,6 +376,28 @@ export function ReservationSplit() {
           )}
         </CardContent>
       </Card>
+
+      <ConfirmModal
+        isOpen={isShortageModalOpen}
+        onClose={() => setIsShortageModalOpen(false)}
+        onConfirm={() => executeSaveLocks(locksToSaveQueue)}
+        title="Proceed with Shortage?"
+        message="Some items do not have their required quantities fully allocated. Do you want to proceed with a partial lock?"
+        confirmText="Yes, Lock Available"
+        cancelText="Cancel"
+        isDestructive={false}
+      />
+
+      <ConfirmModal
+        isOpen={isReleaseModalOpen}
+        onClose={() => setIsReleaseModalOpen(false)}
+        onConfirm={executeRelease}
+        title="Release Stock Locks"
+        message="Are you sure you want to release all currently locked stock for this reservation? It will become available for others."
+        confirmText="Release"
+        cancelText="Cancel"
+        isDestructive={true}
+      />
     </div>
   );
 }

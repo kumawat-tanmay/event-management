@@ -1,1 +1,5 @@
-export default function Placeholder() { return <div className='p-8 flex items-center justify-center h-screen text-muted-foreground'>Coming Soon...</div>; }
+import { AnalyticsView } from '@/components/dashboard/reports/AnalyticsView';
+
+export default function ReportsPage() {
+  return <AnalyticsView />;
+}

@@ -1,1 +1,5 @@
-export default function Placeholder() { return <div className='p-8 flex items-center justify-center h-screen text-muted-foreground'>Coming Soon...</div>; }
+import { PaymentsView } from '@/components/dashboard/finance/payments/PaymentsView';
+
+export default function PaymentsPage() {
+  return <PaymentsView />;
+}

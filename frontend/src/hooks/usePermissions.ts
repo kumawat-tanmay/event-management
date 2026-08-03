@@ -1,7 +1,7 @@
 'use client';
 
 import { useAuth } from '@/hooks/useAuth';
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
 
 /**
  * Custom hook to check user permissions in the frontend UI.
@@ -19,14 +19,27 @@ export const usePermissions = () => {
 
   /**
    * Check if the current user has a specific permission.
-   * Super Admins (or Owners) typically have the '*' permission which bypasses all checks.
+   * System roles (Owner, Admin) bypass all checks — mirrors backend requirePermission.js.
+   * Super Admins typically have the '*' permission which also bypasses all checks.
    * Module wildcard permissions (e.g., 'crm.*') are also supported.
    * 
    * @param permission - The specific permission string to check (e.g., 'users.create')
    * @returns boolean - True if allowed, false otherwise
    */
-  const hasPermission = (permission: string): boolean => {
-    if (!user || permissionsList.length === 0) return false;
+  const hasPermission = useCallback((permission: string): boolean => {
+    if (!user) return false;
+
+    // 1. System role bypass (mirrors backend SYSTEM_BYPASS_ROLES)
+    const roleName = (typeof user.role === 'object' && user.role !== null && 'name' in user.role)
+      ? (user.role as { name: string }).name
+      : user.role;
+    const normalizedRole = (roleName || '').toString().toLowerCase().trim();
+    if (['owner', 'admin', 'super admin', 'superadmin', 'super_admin'].includes(normalizedRole)) {
+      return true;
+    }
+
+    // 2. Permission array checks
+    if (permissionsList.length === 0) return false;
 
     // Check for super admin wildcard
     if (permissionsList.includes('*')) {
@@ -45,21 +58,21 @@ export const usePermissions = () => {
     }
 
     return false;
-  };
+  }, [user, permissionsList]);
 
   /**
    * Check if user has ALL of the specified permissions.
    */
-  const hasAllPermissions = (permissions: string[]): boolean => {
+  const hasAllPermissions = useCallback((permissions: string[]): boolean => {
     return permissions.every((perm) => hasPermission(perm));
-  };
+  }, [hasPermission]);
 
   /**
    * Check if user has ANY of the specified permissions.
    */
-  const hasAnyPermission = (permissions: string[]): boolean => {
+  const hasAnyPermission = useCallback((permissions: string[]): boolean => {
     return permissions.some((perm) => hasPermission(perm));
-  };
+  }, [hasPermission]);
 
   return {
     hasPermission,

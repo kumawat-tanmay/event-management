@@ -1,4 +1,4 @@
-import { OperationForm } from '@/components/dashboard/operations/quotations/OperationForm';
+import { QuotationForm } from '@/components/dashboard/operations/quotations/QuotationForm';
 
 export const metadata = {
   title: 'Create Quotation | Krishna Events ERP',
@@ -6,5 +6,5 @@ export const metadata = {
 };
 
 export default function NewQuotationPage() {
-  return <OperationForm mode="quotation" />;
+  return <QuotationForm />;
 }

@@ -59,7 +59,6 @@ const updateRole = async (req, res) => {
     }
 
 
-
     // Security guard
     if (permissions && permissions.includes('*') && !req.user.permissions?.includes('*')) {
       return res.status(403).json({ success: false, message: 'Cannot assign wildcard permission' });
@@ -87,7 +86,6 @@ const deleteRole = async (req, res) => {
     if (!role) {
       return res.status(404).json({ success: false, message: 'Role not found' });
     }
-
 
 
     // Soft delete

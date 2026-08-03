@@ -5,7 +5,8 @@ const {
   getWarehouseById,
   createWarehouse,
   updateWarehouse,
-  deleteWarehouse
+  deleteWarehouse,
+  bulkImportWarehouseLayout
 } = require('../controllers/warehouseController');
 const { protect } = require('../middlewares/authMiddleware');
 const requirePermission = require('../middlewares/requirePermission');
@@ -19,6 +20,7 @@ router.use(protect);
 router.get('/', requirePermission('warehouses.view'), getWarehouses);
 router.get('/:id', requirePermission('warehouses.view'), getWarehouseById);
 router.post('/', requirePermission('warehouses.create'), validate(createWarehouseSchema), createWarehouse);
+router.post('/:id/bulk-import-layout', requirePermission('warehouses.update'), bulkImportWarehouseLayout);
 router.put('/:id', requirePermission('warehouses.update'), validate(updateWarehouseSchema), updateWarehouse);
 router.delete('/:id', requirePermission('warehouses.delete'), deleteWarehouse);
 

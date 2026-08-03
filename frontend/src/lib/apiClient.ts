@@ -120,11 +120,29 @@ apiClient.interceptors.request.use(
 // ─── Response Interceptor (Anti-Crash & Auto-Logout) ─────────────────────────
 apiClient.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
     const resData = error.response?.data;
     
     // 1. Smart logout: Only logout when the token itself is expired/invalid
     const isDeactivated = error.response?.status === 403 && resData?.message?.toLowerCase().includes('deactivated');
+
+    // 1.5 Handle CSRF Token Expiration (403 Forbidden with CSRF message)
+    const isCsrfFailure = error.response?.status === 403 && resData?.message?.toLowerCase().includes('csrf');
+    if (isCsrfFailure && !error.config._retry) {
+      error.config._retry = true;
+      csrfToken = null; // Force clear the stale token
+      
+      try {
+        const newToken = await fetchCsrfToken();
+        if (newToken) {
+          error.config.headers['x-csrf-token'] = newToken;
+          // Retry the original request with the new token
+          return apiClient(error.config);
+        }
+      } catch (retryError) {
+        return Promise.reject(retryError);
+      }
+    }
 
     const isGenuineAuthFailure = error.response?.status === 401 && (
       resData?.message?.toLowerCase().includes('no longer exists') ||

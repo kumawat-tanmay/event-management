@@ -8,6 +8,7 @@ import { Button } from '@/components/common/Button';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { StatsCard } from '@/components/common/StatsCard';
 import { ConfirmModal } from '@/components/common/ConfirmModal';
+import { ActionGuard } from '@/components/auth/ActionGuard';
 import { cn } from '@/utils/cn';
 
 const DUMMY_VENDORS = [
@@ -88,22 +89,26 @@ export function VendorsView() {
               <Eye className="w-4 h-4" />
             </Button>
           </Link>
-          <Link href={`/vendors/${row.id}/edit`}>
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors">
-              <Edit className="w-4 h-4" />
+          <ActionGuard permission="purchases.update">
+            <Link href={`/vendors/${row.id}/edit`}>
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors">
+                <Edit className="w-4 h-4" />
+              </Button>
+            </Link>
+          </ActionGuard>
+          <ActionGuard permission="purchases.delete">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => {
+                setVendorToDelete(row.id);
+                setDeleteModalOpen(true);
+              }}
+              className="h-8 w-8 text-muted-foreground hover:text-error hover:bg-error/10 transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
             </Button>
-          </Link>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => {
-              setVendorToDelete(row.id);
-              setDeleteModalOpen(true);
-            }}
-            className="h-8 w-8 text-muted-foreground hover:text-error hover:bg-error/10 transition-colors"
-          >
-            <Trash2 className="w-4 h-4" />
-          </Button>
+          </ActionGuard>
         </div>
       )
     },
@@ -116,7 +121,7 @@ export function VendorsView() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h2 className="text-3xl font-black text-foreground tracking-tight mb-1">Vendors & Suppliers</h2>
+          <h2 className="text-3xl font-black text-foreground tracking-tight mb-1">Vendor Management</h2>
           <p className="text-sm font-medium text-muted-foreground">Manage external vendors, cross-rentals, and payments.</p>
         </div>
         <div className="flex gap-3 w-full sm:w-auto">
@@ -124,12 +129,14 @@ export function VendorsView() {
             <Download className="w-4 h-4" />
             Export
           </Button>
-          <Link href="/vendors/new" className="flex-1 sm:flex-none w-full sm:w-auto">
-            <Button variant="primary" className="w-full flex items-center justify-center gap-2">
-              <Plus className="w-4 h-4 shrink-0" />
-              <span className="truncate">Add Vendor</span>
-            </Button>
-          </Link>
+          <ActionGuard permission="purchases.create">
+            <Link href="/vendors/new" className="flex-1 sm:flex-none w-full sm:w-auto">
+              <Button variant="primary" className="w-full flex items-center justify-center gap-2">
+                <Plus className="w-4 h-4 shrink-0" />
+                <span className="truncate">Add Vendor</span>
+              </Button>
+            </Link>
+          </ActionGuard>
         </div>
       </div>
 

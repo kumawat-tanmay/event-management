@@ -43,7 +43,11 @@ const inviteUser = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Role not found' });
     }
 
-    // Security: Prevent assigning a wildcard role unless the inviter has wildcard permission
+    // Security: Prevent assigning Owner role or wildcard role unless inviter is Owner / has wildcard permission
+    if (assignedRole.name === 'Owner' && req.user.role !== 'Owner') {
+      return res.status(403).json({ success: false, message: 'Only an Owner can invite another Owner' });
+    }
+
     if (assignedRole.permissions.includes('*') && !req.user.permissions?.includes('*')) {
       return res.status(403).json({ success: false, message: 'You do not have permission to assign wildcard roles' });
     }
@@ -65,6 +69,36 @@ const inviteUser = async (req, res) => {
       inviteExpiresAt: expireDate,
       invitedBy: req.user ? req.user._id : undefined,
     });
+
+    // Auto-create corresponding Staff record for the invited user
+    try {
+      const Staff = require('../models/Staff');
+      const existingStaff = await Staff.findOne({ 
+        $or: [
+          { email: normalizedEmail },
+          { name: user.name }
+        ], 
+        isDeleted: false 
+      });
+      if (!existingStaff) {
+        const staffCount = await Staff.countDocuments();
+        const staffRole = assignedRole.name || 'Admin';
+        await Staff.create({
+          staffId: `STF-${String(staffCount + 1).padStart(3, '0')}`,
+          name: user.name,
+          email: user.email,
+          phone: req.body.phone || '+91 98290 12345',
+          role: staffRole,
+          compensationType: req.body.compensationType || 'monthly',
+          basePay: Number(req.body.basePay || 30000),
+          totalPaid: Number(req.body.totalPaid || 0),
+          pendingDues: Number(req.body.pendingDues || 0),
+          status: 'Active'
+        });
+      }
+    } catch (staffErr) {
+      console.error('Failed to auto-create staff record on user invite:', staffErr);
+    }
 
     // Send the beautiful invite email
     const loginUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?email=${encodeURIComponent(user.email)}`;

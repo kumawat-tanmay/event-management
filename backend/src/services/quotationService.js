@@ -33,18 +33,15 @@ const generateQuotationId = async () => {
  * @param {Number} taxRate - GST percentage (default 18)
  * @returns {{ subtotal, taxAmount, grandTotal }}
  */
-const calculateQuotationTotals = (items, transportCharges = 0, labourCharges = 0, taxRate = 18) => {
-  const subtotal = items.reduce((sum, item) => {
-    const base = item.rentalRate * item.quantity * item.duration;
-    const discountAmount = (base * (item.discount || 0)) / 100;
-    return sum + (base - discountAmount);
-  }, 0);
-
-  const taxableAmount = subtotal + transportCharges + labourCharges;
-  const taxAmount = Math.round((taxableAmount * taxRate) / 100);
+const calculateQuotationTotals = (items = [], transportCharges = 0, labourCharges = 0, taxRate = 18, overallDiscount = 0) => {
+  const subtotal = 0;
+  const totalBeforeDiscount = Number(transportCharges) + Number(labourCharges);
+  const discountAmount = (totalBeforeDiscount * (Number(overallDiscount) || 0)) / 100;
+  const taxableAmount = Math.max(0, totalBeforeDiscount - discountAmount);
+  const taxAmount = Math.round((taxableAmount * (Number(taxRate) || 0)) / 100);
   const grandTotal = taxableAmount + taxAmount;
 
-  return { subtotal, taxAmount, grandTotal };
+  return { subtotal, discountAmount, taxableAmount, taxAmount, grandTotal };
 };
 
 module.exports = { generateQuotationId, calculateQuotationTotals };

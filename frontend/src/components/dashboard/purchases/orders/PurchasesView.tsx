@@ -8,6 +8,7 @@ import { Button } from '@/components/common/Button';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { StatsCard } from '@/components/common/StatsCard';
 import { ConfirmModal } from '@/components/common/ConfirmModal';
+import { ActionGuard } from '@/components/auth/ActionGuard';
 import { cn } from '@/utils/cn';
 
 const DUMMY_PURCHASES = [
@@ -42,22 +43,22 @@ export function PurchasesView() {
   };
 
   const filteredData = data.filter(p => {
-    const matchesSearch = p.poNumber.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          p.vendor.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = p.poNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.vendor.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesTab = activeTab === 'ALL POs' ? true : p.status.toUpperCase() === activeTab;
     return matchesSearch && matchesTab;
   });
 
   const columns = [
-    { 
-      header: 'PO Number', 
-      accessorKey: 'poNumber', 
+    {
+      header: 'PO Number',
+      accessorKey: 'poNumber',
       cell: (row: any) => (
         <span className="font-bold text-foreground flex items-center gap-2">
           <FileText className="w-4 h-4 text-muted-foreground" />
           {row.poNumber}
         </span>
-      ) 
+      )
     },
     { header: 'Vendor', accessorKey: 'vendor', cell: (row: any) => <span className="font-semibold">{row.vendor}</span> },
     { header: 'Date', accessorKey: 'date' },
@@ -71,22 +72,26 @@ export function PurchasesView() {
               <Eye className="w-4 h-4" />
             </Button>
           </Link>
-          <Link href={`/purchases/${row.id}/edit`}>
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors">
-              <Edit className="w-4 h-4" />
+          <ActionGuard permission="purchases.update">
+            <Link href={`/purchases/${row.id}/edit`}>
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors">
+                <Edit className="w-4 h-4" />
+              </Button>
+            </Link>
+          </ActionGuard>
+          <ActionGuard permission="purchases.delete">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => {
+                setPoToDelete(row.id);
+                setDeleteModalOpen(true);
+              }}
+              className="h-8 w-8 text-muted-foreground hover:text-error hover:bg-error/10 transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
             </Button>
-          </Link>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => {
-              setPoToDelete(row.id);
-              setDeleteModalOpen(true);
-            }}
-            className="h-8 w-8 text-muted-foreground hover:text-error hover:bg-error/10 transition-colors"
-          >
-            <Trash2 className="w-4 h-4" />
-          </Button>
+          </ActionGuard>
         </div>
       )
     },
@@ -103,16 +108,14 @@ export function PurchasesView() {
           <p className="text-sm font-medium text-muted-foreground">Manage purchase requests, POs, and goods receiving.</p>
         </div>
         <div className="flex gap-3 w-full sm:w-auto">
-          <Button variant="outline" className="flex-1 sm:flex-none flex items-center justify-center gap-2">
-            <Download className="w-4 h-4" />
-            Export
-          </Button>
-          <Link href="/purchases/new" className="flex-1 sm:flex-none w-full sm:w-auto">
-            <Button variant="primary" className="w-full flex items-center justify-center gap-2">
-              <Plus className="w-4 h-4 shrink-0" />
-              <span className="truncate">Create PO</span>
-            </Button>
-          </Link>
+          <ActionGuard permission="purchases.create">
+            <Link href="/purchases/new" className="flex-1 sm:flex-none w-full sm:w-auto">
+              <Button variant="primary" className="w-full flex items-center justify-center gap-2">
+                <Plus className="w-4 h-4 shrink-0" />
+                <span className="truncate">Create PO</span>
+              </Button>
+            </Link>
+          </ActionGuard>
         </div>
       </div>
 
@@ -161,7 +164,7 @@ export function PurchasesView() {
                 <ShoppingBag className="w-5 h-5 text-primary" />
                 <h3 className="text-lg font-bold text-foreground">Purchase Log</h3>
               </div>
-              
+
               <div className="flex items-center justify-center w-full lg:w-1/3">
                 <div className="flex space-x-1 bg-muted/50 p-1 rounded-lg w-fit overflow-x-auto max-w-[calc(100vw-2rem)] no-scrollbar">
                   {tabs.map((tab) => (
@@ -184,9 +187,9 @@ export function PurchasesView() {
               <div className="relative w-full lg:w-1/3 flex justify-end">
                 <div className="relative w-full lg:max-w-xs">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <input 
-                    type="text" 
-                    placeholder="Search POs or Vendors..." 
+                  <input
+                    type="text"
+                    placeholder="Search POs or Vendors..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full pl-9 pr-4 py-2 text-sm bg-background border border-input rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 transition-shadow"
@@ -199,7 +202,7 @@ export function PurchasesView() {
         />
       </div>
 
-      <ConfirmModal 
+      <ConfirmModal
         isOpen={deleteModalOpen}
         onClose={() => {
           setDeleteModalOpen(false);

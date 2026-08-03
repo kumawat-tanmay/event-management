@@ -10,6 +10,7 @@ import { ConfirmModal } from '@/components/common/ConfirmModal';
 import { Input } from '@/components/common/Input';
 import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
+import { ActionGuard } from '@/components/auth/ActionGuard';
 
 export default function RolesView() {
   const { t } = useTranslation();
@@ -136,9 +137,11 @@ export default function RolesView() {
       <div className="w-full md:w-1/3 flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-bold font-display">{t('roles.title')}</h2>
-          <Button onClick={handleCreateNew} size="sm" variant="outline" className="gap-2">
-            <Plus className="w-4 h-4" /> {t('roles.addRole')}
-          </Button>
+          <ActionGuard permission="roles.create">
+            <Button onClick={handleCreateNew} size="sm" variant="outline" className="gap-2">
+              <Plus className="w-4 h-4" /> {t('roles.addRole')}
+            </Button>
+          </ActionGuard>
         </div>
         <div className="flex flex-col gap-2 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-2 shadow-sm">
           {roles?.map((role: Role) => (
@@ -172,20 +175,26 @@ export default function RolesView() {
               </div>
               <div className="flex gap-2">
                 {selectedRole && (
-                  <Button variant="outline" onClick={() => handleDeleteClick(selectedRole._id)} className="text-error border-error/20 hover:bg-error/10">
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                  <ActionGuard permission="roles.delete">
+                    <Button variant="outline" onClick={() => handleDeleteClick(selectedRole._id)} className="text-error border-error/20 hover:bg-error/10">
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </ActionGuard>
                 )}
                 {selectedRole && !isEditing && (
-                  <Button onClick={() => setIsEditing(true)} variant="outline">
-                    {t('roles.editRole')}
-                  </Button>
+                  <ActionGuard permission="roles.update">
+                    <Button onClick={() => setIsEditing(true)} variant="outline">
+                      {t('roles.editRole')}
+                    </Button>
+                  </ActionGuard>
                 )}
                 {isEditing && (
-                  <Button onClick={handleSave} disabled={isSaving} className="gap-2">
-                    {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                    {t('roles.saveRole')}
-                  </Button>
+                  <ActionGuard permission="roles.update">
+                    <Button onClick={handleSave} disabled={isSaving} className="gap-2">
+                      {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                      {t('roles.saveRole')}
+                    </Button>
+                  </ActionGuard>
                 )}
               </div>
             </div>

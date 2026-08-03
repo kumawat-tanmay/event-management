@@ -1,9 +1,9 @@
 const errorHandler = (err, req, res, next) => {
   const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
-  
+
   // Log the error to the server console (vital for Vercel/production debugging)
   console.error(`💥 [Error Handler] [${req.method}] ${req.originalUrl}:`, err);
-  
+
   res.status(statusCode);
   res.json({
     success: false,

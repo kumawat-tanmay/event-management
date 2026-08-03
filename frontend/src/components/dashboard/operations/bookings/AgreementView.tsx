@@ -56,14 +56,32 @@ export function AgreementView() {
   const start = new Date(booking.eventStartDate);
   const end = new Date(booking.eventEndDate);
   const duration = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  const itemsTotal = booking.subtotal || 0;
 
-  // Bilingual translation helper
+  // Clean English text helper
   const getBilingualText = (key: string) => {
-    return `${t(key, { lng: 'en' })} / ${t(key, { lng: 'hi' })}`;
+    return t(key, { lng: 'en' });
   };
 
   return (
     <div className="flex flex-col p-4 md:p-6 lg:p-8 w-full print:p-0">
+      <style jsx global>{`
+        @media print {
+          @page {
+            size: A4 portrait;
+            margin: 10mm 12mm;
+          }
+          body {
+            background: #ffffff !important;
+            color: #000000 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .print\\:hidden {
+            display: none !important;
+          }
+        }
+      `}</style>
       {/* Top action bar, centered with the document */}
       <div className="flex items-center justify-between gap-4 mb-6 max-w-4xl w-full mx-auto print:hidden">
         <Button 
@@ -83,7 +101,7 @@ export function AgreementView() {
               className="flex items-center gap-1.5"
             >
               <Check className="w-4 h-4" />
-              {signing ? 'Signing... / हस्ताक्षर...' : 'Sign Agreement / अनुबंध हस्ताक्षर करें'}
+              {signing ? 'Signing...' : 'Sign Agreement'}
             </Button>
           )}
           {booking.agreementSigned && (
@@ -162,7 +180,7 @@ export function AgreementView() {
           <div>
             <span className="text-gray-500 font-bold uppercase block">{getBilingualText('bookings.rentalDuration')}</span>
             <p className="text-gray-900 font-semibold mt-1">
-              {new Date(booking.eventStartDate).toLocaleDateString()} {t('bookings.toLabel', { lng: 'en' })} / {t('bookings.toLabel', { lng: 'hi' })} {new Date(booking.eventEndDate).toLocaleDateString()} ({duration} {t('bookings.daysLabel', { lng: 'en' })} / {t('bookings.daysLabel', { lng: 'hi' })})
+              {new Date(booking.eventStartDate).toLocaleDateString()} to {new Date(booking.eventEndDate).toLocaleDateString()} ({duration} Days)
             </p>
           </div>
         </div>
@@ -177,8 +195,6 @@ export function AgreementView() {
               <tr className="border-b border-gray-400 text-gray-700 font-bold uppercase">
                 <th className="py-2">{getBilingualText('bookings.itemDetailsLabel')}</th>
                 <th className="py-2 text-center">{getBilingualText('bookings.qtyLabel')}</th>
-                <th className="py-2 text-right font-sans">{getBilingualText('bookings.dailyRateLabel')}</th>
-                <th className="py-2 text-right font-sans">{getBilingualText('bookings.totalAmountLabel')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 text-gray-900">
@@ -186,9 +202,7 @@ export function AgreementView() {
                 const itemObj = typeof item.item === 'object' ? item.item : null;
                 const name = item.itemName || (itemObj as any)?.name || 'Unknown Item';
                 const code = item.itemCode || (itemObj as any)?.code || '—';
-                const rate = item.rentalRate !== undefined ? item.rentalRate : ((item as any).rentalPrice !== undefined ? (item as any).rentalPrice : ((itemObj as any)?.rentalPrice || 0));
                 const qty = item.quantity || 0;
-                const total = item.totalAmount !== undefined ? item.totalAmount : ((item as any).total || 0);
 
                 return (
                   <tr key={idx}>
@@ -197,8 +211,6 @@ export function AgreementView() {
                       <span className="text-[10px] text-gray-500 font-normal block font-mono">{code}</span>
                     </td>
                     <td className="py-2.5 text-center font-semibold">{qty} {item.unit || 'pc'}</td>
-                    <td className="py-2.5 text-right font-sans">₹{(rate || 0).toLocaleString()}</td>
-                    <td className="py-2.5 text-right font-bold font-sans">₹{(total || 0).toLocaleString()}</td>
                   </tr>
                 );
               })}
@@ -241,7 +253,7 @@ export function AgreementView() {
         </div>
 
         {/* Terms & Conditions */}
-        <div className="border-t border-gray-300 pt-6 mb-12 text-[10px] text-gray-600 space-y-3 font-sans leading-normal">
+        <div className="border-t border-gray-300 pt-6 mb-12 text-xs text-gray-600 space-y-3 font-sans leading-relaxed">
           <h4 className="text-xs font-black uppercase text-gray-800 flex items-center gap-1.5">
             <ShieldCheck className="w-4 h-4 text-emerald-600" />
             {getBilingualText('bookings.termsAndConditionsLabel')}
@@ -249,18 +261,12 @@ export function AgreementView() {
           <ol className="list-decimal pl-4 space-y-2">
             <li>
               <strong>Loss or Damage:</strong> Client is fully responsible for any loss, damage, or theft of the rented materials (tents, chairs, carpets, decor) during the possession duration. Any replacements will be charged at purchase cost.
-              <br />
-              <span className="text-gray-500 font-medium font-sans">सामग्री के नुकसान या चोरी की जिम्मेदारी ग्राहक की होगी, जिसका हर्जाना ग्राहक को भुगतना होगा।</span>
             </li>
             <li>
               <strong>Payment Schedule:</strong> 50% advance payment is required to lock the booking. The remaining balance must be cleared before the dispatch of materials from the warehouse.
-              <br />
-              <span className="text-gray-500 font-medium font-sans">बुकिंग लॉक करने के लिए 50% अग्रिम आवश्यक है। शेष राशि का भुगतान गोदाम से माल रवाना होने से पहले करना होगा।</span>
             </li>
             <li>
               <strong>Cancellation:</strong> Bookings cancelled within 7 days of the event are subject to a 20% cancellation fee on the total booking amount.
-              <br />
-              <span className="text-gray-500 font-medium font-sans">कार्यक्रम के 7 दिनों के भीतर बुकिंग निरस्त करने पर कुल राशि का 20% कैंसिलेशन शुल्क लागू होगा।</span>
             </li>
           </ol>
         </div>

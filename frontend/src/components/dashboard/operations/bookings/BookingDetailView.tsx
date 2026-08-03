@@ -9,6 +9,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/common/Ca
 import { Button } from '@/components/common/Button';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { bookingService, Booking } from '@/lib/services/booking.services';
+import { ActionGuard } from '@/components/auth/ActionGuard';
 
 export function BookingDetailView() {
   const { t } = useTranslation();
@@ -47,6 +48,8 @@ export function BookingDetailView() {
   const end = new Date(booking.eventEndDate);
   const duration = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 
+  const itemsTotal = booking.subtotal || 0;
+
   return (
     <div className="flex flex-col p-4 md:p-6 lg:p-8 w-full">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
@@ -71,24 +74,28 @@ export function BookingDetailView() {
         </div>
 
         <div className="flex flex-wrap gap-2.5">
-          <Link href={`/operations/bookings/${booking._id}/edit`}>
-            <Button variant="outline" className="flex items-center gap-2">
-              <Edit className="w-4 h-4" />
-              {t('bookings.editBooking')}
-            </Button>
-          </Link>
+          <ActionGuard permission="bookings.update">
+            <Link href={`/operations/bookings/${booking._id}/edit`}>
+              <Button variant="outline" className="flex items-center gap-2">
+                <Edit className="w-4 h-4" />
+                {t('bookings.editBooking')}
+              </Button>
+            </Link>
+          </ActionGuard>
           <Link href={`/operations/bookings/agreement?id=${booking._id}`}>
             <Button variant="outline" className="flex items-center gap-2">
               <Printer className="w-4 h-4" />
               {t('bookings.printAgreement')}
             </Button>
           </Link>
-          <Link href={`/operations/reservation/${booking._id}`}>
-            <Button variant="primary" className="flex items-center gap-2">
-              <FileText className="w-4 h-4" />
-              Manage Reservation
-            </Button>
-          </Link>
+          <ActionGuard permission="bookings.update">
+            <Link href={`/operations/reservation/${booking._id}`}>
+              <Button variant="primary" className="flex items-center gap-2">
+                <FileText className="w-4 h-4" />
+                Manage Reservation
+              </Button>
+            </Link>
+          </ActionGuard>
         </div>
       </div>
 
@@ -165,9 +172,7 @@ export function BookingDetailView() {
                   <thead>
                     <tr className="border-b border-border bg-muted/40 text-xs font-black text-muted-foreground uppercase tracking-wider">
                       <th className="p-4">Item Name</th>
-                      <th className="p-4 text-center">Quantity</th>
-                      <th className="p-4 text-right">Rate / Day</th>
-                      <th className="p-4 text-right">Total Amount</th>
+                      <th className="p-4 text-center rounded-r-lg">Quantity</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
@@ -186,8 +191,6 @@ export function BookingDetailView() {
                             <span className="text-xs text-muted-foreground block font-mono">{code}</span>
                           </td>
                           <td className="p-4 text-center font-semibold">{qty} {item.unit || 'pc'}</td>
-                          <td className="p-4 text-right">₹{(rate || 0).toLocaleString()}</td>
-                          <td className="p-4 text-right font-semibold text-foreground">₹{(total || 0).toLocaleString()}</td>
                         </tr>
                       );
                     })}
@@ -204,20 +207,31 @@ export function BookingDetailView() {
               <CardTitle className="text-lg font-bold">Payments Ledger</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Subtotal</span>
-                <span className="font-semibold text-foreground">₹{(booking.subtotal || 0).toLocaleString()}</span>
-              </div>
+
+
+              {itemsTotal > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Materials Total</span>
+                  <span className="font-semibold text-foreground">₹{itemsTotal.toLocaleString()}</span>
+                </div>
+              )}
 
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Transport Charges</span>
+                <span className="text-muted-foreground">Transport / Car Cost</span>
                 <span className="font-semibold text-foreground">₹{(booking.transportCharges || 0).toLocaleString()}</span>
               </div>
 
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Labour Charges</span>
+                <span className="text-muted-foreground">Tent Cost</span>
                 <span className="font-semibold text-foreground">₹{(booking.labourCharges || 0).toLocaleString()}</span>
               </div>
+
+              {booking.discount !== undefined && booking.discount > 0 && (
+                <div className="flex justify-between text-sm text-emerald-600">
+                  <span className="font-medium">Discount ({booking.discount}%)</span>
+                  <span className="font-bold">- ₹{(((booking.subtotal || 0) + (booking.transportCharges || 0) + (booking.labourCharges || 0)) * booking.discount / 100).toLocaleString()}</span>
+                </div>
+              )}
 
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">GST ({booking.taxRate || 0}%)</span>

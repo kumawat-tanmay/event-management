@@ -22,19 +22,17 @@ const allowedOrigins = [
 const corsOptions = {
   origin: function (origin, callback) {
     if (!origin) return callback(null, true);
-    
+
     // Normalize origins (remove trailing slash and convert to lowercase)
     const normalize = (url) => url.replace(/\/$/, '').toLowerCase();
     const normalizedOrigin = normalize(origin);
-    
-    const isAllowed = allowedOrigins.some(allowed => normalize(allowed) === normalizedOrigin) ||
-                      normalizedOrigin.endsWith('.vercel.app') ||
-                      normalizedOrigin.startsWith('https://event-management-');
+
+    const isAllowed = allowedOrigins.some(allowed => normalize(allowed) === normalizedOrigin);
 
     if (isAllowed) {
       return callback(null, true);
     }
-    
+
     console.warn(`⚠️ CORS blocked origin: ${origin}. Allowed origins:`, allowedOrigins);
     callback(new Error(`Not allowed by CORS: ${origin}`));
   },
@@ -80,7 +78,7 @@ if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === undefined
   app.use(morgan(':id :method :url :status :response-time ms - :res[content-length]'));
 }
 
-const { csrfTokenHandler } = require('./middlewares/csrfMiddleware');
+const { csrfTokenHandler, verifyCsrfToken } = require('./middlewares/csrfMiddleware');
 const connectDB = require('./config/db');
 
 // Ensure database is connected before processing any requests (especially on Vercel Serverless)
@@ -95,7 +93,7 @@ app.use(async (req, res, next) => {
 
 // API Routes
 const routes = require('./routes');
-app.use('/api', routes);
+app.use('/api', verifyCsrfToken, routes);
 
 // CSRF Token endpoint (for frontend compatibility)
 app.get('/api/csrf-token', csrfTokenHandler, (req, res) => {
