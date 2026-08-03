@@ -11,252 +11,7 @@ import { FormDrawer } from '@/components/common/FormDrawer';
 import { crmService, Customer } from '@/lib/services/crm.services';
 import { inventoryService, Item } from '@/lib/services/inventory.services';
 import { quotationService, StockAvailabilityItem } from '@/lib/services/quotation.services';
-
-// ==========================================
-// 1. StockAvailabilityCheck Subcomponent
-// ==========================================
-interface StockAvailabilityCheckProps {
-  itemId: string;
-  requestedQty: number;
-  startDate?: string;
-  endDate?: string;
-  availabilityData?: StockAvailabilityItem;
-}
-
-function StockAvailabilityCheck({ itemId, requestedQty, startDate, endDate, availabilityData }: StockAvailabilityCheckProps) {
-  const { t } = useTranslation();
-
-  if (!startDate || !endDate) {
-    return (
-      <div className="flex items-center gap-2 text-xs text-muted-foreground mt-2 bg-muted/30 p-2 rounded-lg font-sans">
-        <PackageSearch className="w-4 h-4" />
-        <span>Select dates to check live availability</span>
-      </div>
-    );
-  }
-
-  if (!availabilityData) {
-    return (
-      <div className="flex items-center gap-2 text-xs text-muted-foreground mt-2 bg-muted/30 p-2 rounded-lg font-sans">
-        <PackageSearch className="w-4 h-4 animate-pulse" />
-        <span>Checking availability...</span>
-      </div>
-    );
-  }
-
-  const isAvailable = availabilityData.isFullyAvailable;
-  const totalAvailable = availabilityData.totalAvailable;
-
-  return (
-    <div className={`mt-2 p-3 rounded-lg border text-xs font-sans ${isAvailable ? 'border-success/20 bg-success/5' : 'border-error/20 bg-error/5'}`}>
-      <div className="flex items-center gap-2 font-bold mb-2">
-        {isAvailable ? (
-          <>
-            <CheckCircle className="w-4 h-4 text-success" />
-            <span className="text-success">{t('reservation.checkStock')}: {requestedQty} / {totalAvailable}</span>
-          </>
-        ) : (
-          <>
-            <AlertTriangle className="w-4 h-4 text-error" />
-            <span className="text-error">{t('reservation.conflicts')}: {requestedQty} requested, {totalAvailable} available</span>
-          </>
-        )}
-      </div>
-      
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2 pt-2 border-t border-border">
-        {availabilityData.warehouses.map((wh) => (
-          <div key={wh.warehouseId}>
-            <span className="text-[10px] text-muted-foreground block uppercase truncate" title={wh.warehouseName}>{wh.warehouseName}</span>
-            <span className={`font-bold ${wh.available === 0 ? 'text-error' : 'text-foreground'}`}>{wh.available}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ==========================================
-// 2. ItemSelector Drawer Subcomponent
-// ==========================================
-export interface ItemSelectorProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onAddItems: (items: any[]) => void;
-  startDate?: string;
-  endDate?: string;
-  stockAvailabilityMap: Record<string, StockAvailabilityItem>;
-  triggerStockCheck: (itemsToCheck: { item: string; quantity: number }[]) => void;
-}
-
-function ItemSelector({ isOpen, onClose, onAddItems, startDate, endDate, stockAvailabilityMap, triggerStockCheck }: ItemSelectorProps) {
-  const { t } = useTranslation();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedItems, setSelectedItems] = useState<Record<string, number>>({});
-  const [items, setItems] = useState<Item[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        setLoading(true);
-        const itemsRes = await inventoryService.getItems({ limit: 100 });
-        setItems(itemsRes.data);
-      } catch (error) {
-        console.error('Error loading item selector data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    if (isOpen) {
-      loadData();
-    }
-  }, [isOpen]);
-
-  const filteredItems = items.filter(item => {
-    return item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-           item.code.toLowerCase().includes(searchQuery.toLowerCase());
-  });
-
-  const handleQuantityChange = (id: string, delta: number) => {
-    setSelectedItems(prev => {
-      const current = prev[id] || 0;
-      const next = Math.max(0, current + delta);
-      
-      const newItems = { ...prev };
-      if (next === 0) {
-        delete newItems[id];
-      } else {
-        newItems[id] = next;
-      }
-
-      // Automatically trigger live stock check if date is available
-      if (next > 0 && startDate && endDate) {
-        const payload = Object.entries(newItems).map(([itemId, qty]) => ({
-          item: itemId,
-          quantity: qty
-        }));
-        if (payload.length > 0) {
-          triggerStockCheck(payload);
-        }
-      }
-
-      return newItems;
-    });
-  };
-
-  const handleAddSelected = () => {
-    const itemsToAdd = Object.entries(selectedItems).map(([id, qty]) => {
-      const item = items.find(i => i._id === id)!;
-      return {
-        id: item._id,
-        code: item.code,
-        name: item.name,
-        rate: 0,
-        unit: item.unit,
-        qty: qty,
-        total: 0,
-      };
-    });
-
-    onAddItems(itemsToAdd);
-    setSelectedItems({});
-    onClose();
-  };
-
-  const totalSelectedItems = Object.keys(selectedItems).length;
-
-  return (
-    <FormDrawer
-      isOpen={isOpen}
-      onClose={onClose}
-      title={t('inventory.selectItems', 'Select Inventory Items')}
-      size="lg"
-      footer={
-        <>
-          <Button variant="outline" onClick={onClose}>{t('roles.cancel')}</Button>
-          <Button 
-            variant="primary" 
-            onClick={handleAddSelected}
-            disabled={totalSelectedItems === 0}
-          >
-            Add {totalSelectedItems} Item(s)
-          </Button>
-        </>
-      }
-    >
-      <div className="space-y-6 font-sans">
-        {startDate && endDate && (
-          <div className="bg-primary/10 text-primary p-3 rounded-lg text-sm font-medium border border-primary/20">
-            Checking availability for event dates: {new Date(startDate).toLocaleDateString()} to {new Date(endDate).toLocaleDateString()}
-          </div>
-        )}
-
-        <div className="space-y-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder={t('item.searchPlace', 'Search by name or code...')}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-            />
-          </div>
-        </div>
-
-        {loading ? (
-          <div className="text-center p-8 text-muted-foreground animate-pulse">Loading items...</div>
-        ) : (
-          <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
-            {filteredItems.map(item => {
-              const selectedQty = selectedItems[item._id] || 0;
-              return (
-                <div key={item._id} className={`p-4 rounded-xl border transition-all ${selectedQty > 0 ? 'border-primary/50 bg-primary/5' : 'border-border bg-card'}`}>
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <span className="text-xs font-bold px-2 py-0.5 rounded bg-muted text-muted-foreground">{item.code}</span>
-                      </div>
-                      <h4 className="font-bold text-foreground truncate">{item.name}</h4>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        Unit: {item.unit || 'Pieces'}
-                      </div>
-                      
-                      <div className="mt-3">
-                         <StockAvailabilityCheck itemId={item._id} requestedQty={selectedQty > 0 ? selectedQty : 1} startDate={startDate} endDate={endDate} availabilityData={stockAvailabilityMap[item._id]} />
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col items-end justify-center h-full shrink-0">
-                      <div className="flex items-center gap-3 bg-background border border-border rounded-lg p-1">
-                        <button 
-                          type="button"
-                          onClick={() => handleQuantityChange(item._id, -1)}
-                          disabled={selectedQty === 0}
-                          className="w-7 h-7 flex items-center justify-center rounded-md bg-muted text-foreground hover:bg-border disabled:opacity-50 transition-colors"
-                        >
-                          <Minus className="w-3 h-3" />
-                        </button>
-                        <span className="w-8 text-center font-bold text-sm">{selectedQty}</span>
-                        <button 
-                          type="button"
-                          onClick={() => handleQuantityChange(item._id, 1)}
-                          className="w-7 h-7 flex items-center justify-center rounded-md bg-primary text-on-primary hover:bg-primary/90 transition-colors"
-                        >
-                          <Plus className="w-3 h-3" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    </FormDrawer>
-  );
-}
+import { ItemSelectorModal, StockAvailabilityCheck } from '@/components/common/ItemSelectorModal';
 
 // ==========================================
 // 3. Primary QuotationForm Component
@@ -271,7 +26,7 @@ export function QuotationForm({ isEdit = false }: QuotationFormProps) {
   const getBilingualText = useCallback((key: string) => {
     return t(key);
   }, [t]);
-  
+
   const router = useRouter();
   const { id } = useParams();
   const [loading, setLoading] = useState(false);
@@ -414,7 +169,7 @@ export function QuotationForm({ isEdit = false }: QuotationFormProps) {
 
   const handleAddItems = (newItems: any[]) => {
     const updatedItems = [...items];
-    
+
     newItems.forEach(newItem => {
       const existingIdx = updatedItems.findIndex(i => i.id === newItem.id);
       if (existingIdx >= 0) {
@@ -503,9 +258,9 @@ export function QuotationForm({ isEdit = false }: QuotationFormProps) {
   return (
     <div className="flex flex-col p-4 md:p-6 lg:p-8 w-full font-sans">
       <div className="flex items-center gap-4 mb-8">
-        <Button 
-          variant="ghost" 
-          size="icon" 
+        <Button
+          variant="ghost"
+          size="icon"
           onClick={() => router.back()}
           className="shrink-0"
         >
@@ -535,7 +290,7 @@ export function QuotationForm({ isEdit = false }: QuotationFormProps) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-bold text-foreground">{getBilingualText('operationForm.customerLabel')}</label>
-                  <select 
+                  <select
                     className="w-full h-10 px-3 rounded-lg border border-border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
                     value={customer}
                     onChange={(e) => {
@@ -558,7 +313,7 @@ export function QuotationForm({ isEdit = false }: QuotationFormProps) {
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-bold text-foreground">{getBilingualText('operationForm.eventTypeLabel')}</label>
-                  <select 
+                  <select
                     className="w-full h-10 px-3 rounded-lg border border-border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
                     value={eventType}
                     onChange={(e) => setEventType(e.target.value)}
@@ -574,8 +329,8 @@ export function QuotationForm({ isEdit = false }: QuotationFormProps) {
               </div>
 
               <div className="space-y-2">
-                <Input 
-                  label={getBilingualText('operationForm.eventTitleLabel')} 
+                <Input
+                  label={getBilingualText('operationForm.eventTitleLabel')}
                   type="text"
                   placeholder={getBilingualText('operationForm.eventTitlePlaceholder')}
                   value={eventTitle}
@@ -585,15 +340,15 @@ export function QuotationForm({ isEdit = false }: QuotationFormProps) {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input 
-                  label={getBilingualText('operationForm.eventStartDateLabel')} 
+                <Input
+                  label={getBilingualText('operationForm.eventStartDateLabel')}
                   type="date"
                   value={eventStartDate}
                   onChange={(e) => setEventStartDate(e.target.value)}
                   required
                 />
-                <Input 
-                  label={getBilingualText('operationForm.eventEndDateLabel')} 
+                <Input
+                  label={getBilingualText('operationForm.eventEndDateLabel')}
                   type="date"
                   value={eventEndDate}
                   onChange={(e) => setEventEndDate(e.target.value)}
@@ -602,8 +357,8 @@ export function QuotationForm({ isEdit = false }: QuotationFormProps) {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input 
-                  label={getBilingualText('operationForm.validUntilLabel')} 
+                <Input
+                  label={getBilingualText('operationForm.validUntilLabel')}
                   type="date"
                   value={validUntil}
                   onChange={(e) => setValidUntil(e.target.value)}
@@ -612,7 +367,7 @@ export function QuotationForm({ isEdit = false }: QuotationFormProps) {
 
               <div className="space-y-2">
                 <label className="text-sm font-bold text-foreground">{getBilingualText('operationForm.venueAddressLabel')}</label>
-                <textarea 
+                <textarea
                   className="w-full min-h-[80px] p-3 rounded-lg border border-border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
                   placeholder={getBilingualText('operationForm.venueAddressPlaceholder')}
                   value={venueAddress}
@@ -633,10 +388,10 @@ export function QuotationForm({ isEdit = false }: QuotationFormProps) {
                 <CardDescription>{t('operationForm.materialsDesc')}</CardDescription>
               </div>
               <div className="flex items-center gap-2">
-                <Button 
+                <Button
                   type="button"
-                  variant="outline" 
-                  size="sm" 
+                  variant="outline"
+                  size="sm"
                   onClick={() => setIsItemSelectorOpen(true)}
                   className="flex items-center gap-2"
                 >
@@ -667,7 +422,7 @@ export function QuotationForm({ isEdit = false }: QuotationFormProps) {
                       {items.map((item) => (
                         <tr key={item.id} className="border-b border-border/50 hover:bg-muted/20">
                           <td className="px-4 py-3 min-w-[200px]">
-                            <input 
+                            <input
                               type="text"
                               value={item.name}
                               onChange={(e) => handleUpdateItemField(item.id, 'name', e.target.value)}
@@ -680,7 +435,7 @@ export function QuotationForm({ isEdit = false }: QuotationFormProps) {
                           </td>
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-1.5 w-24">
-                              <input 
+                              <input
                                 type="text"
                                 value={item.qty === 0 ? '' : item.qty}
                                 placeholder="1"
@@ -694,7 +449,7 @@ export function QuotationForm({ isEdit = false }: QuotationFormProps) {
                             </div>
                           </td>
                           <td className="px-4 py-3 text-right">
-                            <button 
+                            <button
                               type="button"
                               onClick={() => handleRemoveItem(item.id)}
                               className="p-1.5 text-muted-foreground hover:text-error hover:bg-error/10 rounded transition-colors"
@@ -727,9 +482,9 @@ export function QuotationForm({ isEdit = false }: QuotationFormProps) {
             <CardContent className="space-y-4">
               <div className="space-y-3 pb-4 border-b border-border">
                 <div className="space-y-4 pt-2">
-                  <Input 
+                  <Input
                     label={getBilingualText('operationForm.transportLabel')}
-                    placeholder={getBilingualText('operationForm.transportLabel')} 
+                    placeholder={getBilingualText('operationForm.transportLabel')}
                     type="number"
                     value={transportCharges}
                     onChange={(e) => {
@@ -739,9 +494,9 @@ export function QuotationForm({ isEdit = false }: QuotationFormProps) {
                     className="text-right font-semibold text-foreground"
                     icon={Truck}
                   />
-                  <Input 
+                  <Input
                     label={getBilingualText('operationForm.labourLabel')}
-                    placeholder={getBilingualText('operationForm.labourLabel')} 
+                    placeholder={getBilingualText('operationForm.labourLabel')}
                     type="number"
                     value={labourCharges}
                     onChange={(e) => {
@@ -757,7 +512,7 @@ export function QuotationForm({ isEdit = false }: QuotationFormProps) {
               <div className="space-y-3 pb-4 border-b border-border">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium text-muted-foreground">{getBilingualText('operationForm.discountLabel')}</span>
-                  <Input 
+                  <Input
                     type="number"
                     value={discount}
                     onChange={(e) => setDiscount(Number(e.target.value))}
@@ -766,7 +521,7 @@ export function QuotationForm({ isEdit = false }: QuotationFormProps) {
                   />
                   <span className="text-sm font-bold text-success ml-auto">- ₹ {discountAmount.toLocaleString()}</span>
                 </div>
-                
+
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-muted-foreground font-medium">{getBilingualText('operationForm.taxableAmountLabel')}</span>
                   <span className="font-bold">₹ {taxableAmount.toLocaleString()}</span>
@@ -774,7 +529,7 @@ export function QuotationForm({ isEdit = false }: QuotationFormProps) {
 
                 <div className="flex items-center justify-between pt-1">
                   <span className="text-sm font-medium text-muted-foreground">{getBilingualText('operationForm.gstLabel')}</span>
-                  <select 
+                  <select
                     value={applyGst ? taxRate : 0}
                     onChange={(e) => {
                       const val = Number(e.target.value);
@@ -807,10 +562,10 @@ export function QuotationForm({ isEdit = false }: QuotationFormProps) {
               </div>
 
               <Button type="submit" variant="primary" className="w-full mt-4" disabled={loading || items.length === 0}>
-                {loading 
-                  ? getBilingualText('operationForm.saving') 
-                  : isEdit 
-                    ? getBilingualText('operationForm.updateDetails') 
+                {loading
+                  ? getBilingualText('operationForm.saving')
+                  : isEdit
+                    ? getBilingualText('operationForm.updateDetails')
                     : getBilingualText('operationForm.saveDetails')
                 }
               </Button>
@@ -819,8 +574,8 @@ export function QuotationForm({ isEdit = false }: QuotationFormProps) {
         </div>
       </form>
 
-      <ItemSelector 
-        isOpen={isItemSelectorOpen} 
+      <ItemSelectorModal
+        isOpen={isItemSelectorOpen}
         onClose={() => setIsItemSelectorOpen(false)}
         onAddItems={handleAddItems}
         startDate={eventStartDate}
