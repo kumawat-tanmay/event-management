@@ -41,7 +41,7 @@ export interface ApiResponse<T = any> {
 
 // ─── Base URL Configuration ──────────────────────────────────────────────────
 export const getBackendBaseUrl = () => {
-  const url = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+  const url = process.env.NEXT_PUBLIC_API_URL || 'https://event-management-x2m7.vercel.app/api';
   return url.replace(/([^:]\/)\/+/g, "$1").replace(/\/$/, "");
 };
 
