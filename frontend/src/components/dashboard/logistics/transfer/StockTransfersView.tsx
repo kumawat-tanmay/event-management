@@ -91,7 +91,16 @@ export function StockTransfersView() {
     {
       header: t('transfer.itemsCount'),
       accessorKey: 'items',
-      cell: (row: any) => <span className="font-bold text-xs text-foreground">{row.items?.length || 0} Items</span>,
+      cell: (row: any) => {
+        const totalQty = (row.items || []).reduce((sum: number, itm: any) => sum + (itm.quantity || 0), 0);
+        const itemTypes = row.items?.length || 0;
+        return (
+          <div className="flex flex-col">
+            <span className="font-bold text-xs text-foreground">{totalQty} Units</span>
+            <span className="text-[10px] text-muted-foreground">{itemTypes} Item(s)</span>
+          </div>
+        );
+      },
     },
     {
       header: t('transfer.requestedBy'),
@@ -201,9 +210,8 @@ export function StockTransfersView() {
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`px-4 py-1.5 text-xs font-bold transition-all rounded-md whitespace-nowrap ${
-                  activeTab === tab ? 'bg-primary text-on-primary shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                }`}
+                className={`px-4 py-1.5 text-xs font-bold transition-all rounded-md whitespace-nowrap ${activeTab === tab ? 'bg-primary text-on-primary shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                  }`}
               >
                 {tab === 'ALL' ? t('transfer.allTransfers') : tab === 'REQUESTED' ? t('transfer.requested') : tab === 'IN-TRANSIT' ? t('transfer.inTransit') : tab === 'RECEIVED' ? t('transfer.received') : t('transfer.rejected')}
               </button>
