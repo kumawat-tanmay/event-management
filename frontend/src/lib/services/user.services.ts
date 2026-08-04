@@ -14,6 +14,12 @@ export interface User {
     name: string;
     email: string;
   };
+  phone?: string;
+  address?: string;
+  dob?: string;
+  gender?: string;
+  description?: string;
+  avatar?: string;
 }
 
 export const userService = {
@@ -22,8 +28,22 @@ export const userService = {
     return res.data.data;
   },
 
+  getUserById: async (id: string): Promise<User> => {
+    const res = await apiClient.get(`/users/${id}`);
+    return res.data.data;
+  },
+
   inviteUser: async (data: { name: string; email: string; role: string }): Promise<User> => {
     const res = await apiClient.post('/users/invite', data);
     return res.data.data;
+  },
+
+  updateUser: async (id: string, data: Partial<User>): Promise<User> => {
+    const res = await apiClient.put(`/users/${id}`, data);
+    return res.data.data;
+  },
+
+  deleteUser: async (id: string): Promise<void> => {
+    await apiClient.delete(`/users/${id}`);
   }
 };

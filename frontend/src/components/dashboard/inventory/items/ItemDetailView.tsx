@@ -2,16 +2,16 @@
 
 import React, { useState, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { ArrowLeft, Edit, Hash, MapPin, Tag, Clock, Image as ImageIcon, Loader2, IndianRupee, AlertCircle, Layers } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, Hash, MapPin, Tag, Loader2, IndianRupee, AlertCircle, Layers } from 'lucide-react';
 import { Button } from '@/components/common/Button';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { DataTable } from '@/components/common/DataTable';
-import { AdjustStockModal } from './AdjustStockModal';
 import useSWR from 'swr';
-import { inventoryService, Item, LedgerEntry } from '@/lib/services/inventory.services';
+import { inventoryService, Item } from '@/lib/services/inventory.services';
 import { ActionGuard } from '@/components/auth/ActionGuard';
 import { warehouseService, Warehouse } from '@/lib/services/warehouse.services';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'react-hot-toast';
 
 export function ItemDetailView() {
   const { t } = useTranslation();
@@ -19,7 +19,26 @@ export function ItemDetailView() {
   const params = useParams();
   
   const id = params?.id as string;
-  const [adjustStockModalOpen, setAdjustStockModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    if (!window.confirm(t('item.deleteConfirm', 'Are you sure you want to delete this item?'))) {
+      return;
+    }
+    
+    setIsDeleting(true);
+    try {
+      await inventoryService.deleteItem(id);
+      toast.success(t('item.deleteSuccess', 'Item deleted successfully'));
+      router.push('/inventory/items');
+    } catch (error: any) {
+      console.error('Error deleting item:', error);
+      toast.error(error?.response?.data?.message || t('item.deleteError', 'Failed to delete item'));
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
 
   // Fetch Item details
   const { data: item, error: itemError, isLoading: itemLoading, mutate: refetchItem } = useSWR(
@@ -27,64 +46,8 @@ export function ItemDetailView() {
     () => inventoryService.getItemById(id)
   );
 
-  // Fetch recent stock movements for this item
-  const { data: ledgerResponse, isLoading: ledgerLoading } = useSWR(
-    id ? `item-ledger-${id}` : null,
-    () => inventoryService.getLedger({ item: id, limit: 15 })
-  );
-
-  // Fetch warehouses to resolve zone/rack names
+  // Fetch Warehouses to resolve zone/rack names
   const { data: warehouses } = useSWR<Warehouse[]>('warehouses', warehouseService.getWarehouses);
-
-  const movements = ledgerResponse?.data || [];
-
-  const movementColumns = [
-    { 
-      header: t('warehouse.created', 'Date'), 
-      accessorKey: 'createdAt', 
-      cell: (row: LedgerEntry) => <span className="text-muted-foreground">{new Date(row.createdAt).toLocaleDateString()}</span> 
-    },
-    { 
-      header: t('warehouse.status', 'Type'), 
-      accessorKey: 'type', 
-      cell: (row: LedgerEntry) => (
-        <span className={`font-bold text-[11px] px-2 py-1 rounded border uppercase ${
-          ['STOCK_IN', 'OPENING_STOCK', 'REPAIRED'].includes(row.type) ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 
-          ['STOCK_OUT', 'DAMAGED', 'SCRAPPED'].includes(row.type) ? 'bg-red-500/10 text-red-500 border-red-500/20' : 
-          'bg-blue-500/10 text-blue-500 border-blue-500/20'
-        }`}>
-          {row.type.replace('_', ' ')}
-        </span>
-      )
-    },
-    { 
-      header: t('item.quantity', 'Quantity'), 
-      accessorKey: 'quantity', 
-      cell: (row: LedgerEntry) => {
-        const isAddition = ['STOCK_IN', 'OPENING_STOCK', 'REPAIRED', 'TRANSFER_IN', 'RELEASED'].includes(row.type);
-        return (
-          <span className={isAddition ? "text-emerald-600 font-bold" : "text-red-500 font-bold"}>
-            {isAddition ? '+' : '-'}{row.quantity}
-          </span>
-        );
-      }
-    },
-    { 
-      header: t('item.warehouse', 'Warehouse'), 
-      accessorKey: 'warehouse', 
-      cell: (row: LedgerEntry) => <span>{typeof row.warehouse === 'object' ? row.warehouse.name : '—'}</span> 
-    },
-    { 
-      header: 'Reference', 
-      accessorKey: 'reference', 
-      cell: (row: LedgerEntry) => <span className="text-primary font-medium">{row.reference || '—'}</span> 
-    },
-    { 
-      header: t('warehouse.manager', 'Handled By'), 
-      accessorKey: 'performedBy', 
-      cell: (row: LedgerEntry) => <span>{typeof row.performedBy === 'object' ? row.performedBy.name : '—'}</span> 
-    },
-  ];
 
   const warehouseBreakdownColumns = [
     { 
@@ -129,6 +92,15 @@ export function ItemDetailView() {
       header: t('item.damaged', 'Damaged'), 
       accessorKey: 'damaged', 
       cell: (row: any) => <span className="text-red-500">{row.damaged}</span> 
+    },
+    { 
+      header: 'Unit Cost', 
+      accessorKey: 'unitCost', 
+      cell: (row: any) => (
+        <span className="font-semibold text-amber-600">
+          {row.unitCost > 0 ? `₹${row.unitCost.toLocaleString()}` : '—'}
+        </span>
+      )
     }
   ];
 
@@ -172,21 +144,24 @@ export function ItemDetailView() {
         </div>
         
         <div className="flex items-center gap-3">
-          <ActionGuard permission="inventory.update">
+          <ActionGuard permission="inventory.delete">
             <Button 
               variant="outline" 
-              className="flex items-center gap-2"
-              onClick={() => setAdjustStockModalOpen(true)}
+              className="flex items-center gap-2 border-red-200 hover:bg-red-50 hover:text-red-600 text-red-500"
+              onClick={handleDelete}
+              disabled={isDeleting}
             >
-              <Layers className="w-4 h-4 shrink-0" />
-              <span className="truncate">Adjust Stock</span>
+              {isDeleting ? <Loader2 className="w-4 h-4 animate-spin text-red-500" /> : <Trash2 className="w-4 h-4 shrink-0" />}
+              <span className="truncate">{t('item.deleteItem', 'Delete Item')}</span>
             </Button>
           </ActionGuard>
+
           <ActionGuard permission="inventory.update">
             <Button 
               variant="primary" 
               className="flex items-center gap-2"
               onClick={() => router.push(`/inventory/items/${item._id}/edit`)}
+              disabled={isDeleting}
             >
               <Edit className="w-4 h-4 shrink-0" />
               <span className="truncate">{t('item.editItem', 'Edit Item')}</span>
@@ -204,121 +179,77 @@ export function ItemDetailView() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
-        {/* Left Column: Details & Image */}
-        <div className="space-y-6">
-          {/* Image */}
-          <div className="bg-card border border-border rounded-2xl p-8 flex flex-col items-center justify-center text-muted-foreground shadow-sm aspect-video overflow-hidden">
-            {item.image ? (
-              <img src={item.image} alt={item.name} className="w-full h-full object-cover rounded-xl" />
-            ) : (
-              <>
-                <ImageIcon className="w-12 h-12 mb-3 opacity-50" />
-                <p className="text-sm font-medium">No image available</p>
-              </>
-            )}
+      {/* Unified Details Panel (Form Style) */}
+      <div className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden divide-y divide-border">
+        {/* Section 1: Basic & Financial Details */}
+        <div className="p-6 space-y-6">
+          <div className="flex items-center gap-2 text-foreground font-bold text-lg">
+            <Layers className="w-5 h-5 text-primary" />
+            <h2>{t('item.basicInfo', 'Basic Information')}</h2>
           </div>
 
-          {/* Details Card */}
-          <div className="bg-card border border-border rounded-2xl p-6 shadow-sm space-y-4">
-            <h3 className="text-lg font-bold text-foreground border-b border-border pb-3">{t('item.details')}</h3>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              {item.description || t('category.noDescription', 'No description provided.')}
-            </p>
-            <div className="space-y-3 pt-3">
-              {item.rentalPrice > 0 && (
-                <div className="flex justify-between items-center py-2 border-b border-border/50">
-                  <span className="text-sm text-muted-foreground flex items-center gap-2"><Tag className="w-4 h-4" /> {t('item.rentalPrice')}</span>
-                  <span className="text-sm font-semibold text-emerald-500">₹{item.rentalPrice.toLocaleString()}/{item.unit}</span>
-                </div>
-              )}
-              <div className="flex justify-between items-center py-2">
-                <span className="text-sm text-muted-foreground flex items-center gap-2"><IndianRupee className="w-4 h-4" /> {t('item.purchaseCost')}</span>
-                <span className="text-sm font-semibold text-foreground">₹{item.purchaseCost.toLocaleString()}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Right Column: Stats, Breakdown & Movements */}
-        <div className="lg:col-span-2 space-y-6 flex flex-col">
-          
-          {/* Stock Stats */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 shrink-0">
+          {/* Stock Stats Grid (Top row) */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {[
-              { label: t('category.totalItems'), val: item.totalStock, container: 'bg-card border-border', labelCls: 'text-muted-foreground', valCls: 'text-foreground' },
-              { label: t('item.available'), val: item.availableStock, container: 'bg-emerald-500/10 border-emerald-500/30', labelCls: 'text-emerald-600 dark:text-emerald-500', valCls: 'text-emerald-600 dark:text-emerald-400' },
-              { label: t('item.rentedOut'), val: item.dispatchedStock, container: 'bg-blue-500/10 border-blue-500/30', labelCls: 'text-blue-600 dark:text-blue-500', valCls: 'text-blue-600 dark:text-blue-400' },
-              { label: t('item.repair'), val: item.damagedStock, container: 'bg-orange-500/10 border-orange-500/30', labelCls: 'text-orange-600 dark:text-orange-500', valCls: 'text-orange-600 dark:text-orange-400' }
+              { label: t('category.totalItems'), val: item.totalStock, container: 'bg-card border-border', valCls: 'text-foreground' },
+              { label: t('item.available'), val: item.availableStock, container: 'bg-emerald-500/5 border-emerald-500/20', valCls: 'text-emerald-600' },
+              { label: t('item.rentedOut'), val: item.dispatchedStock, container: 'bg-blue-500/5 border-blue-500/20', valCls: 'text-blue-600' },
+              { label: t('item.repair'), val: item.damagedStock, container: 'bg-orange-500/5 border-orange-500/20', valCls: 'text-orange-600' }
             ].map((stat, idx) => (
-              <div key={idx} className={`border rounded-2xl p-4 shadow-sm flex flex-col items-center justify-center text-center ${stat.container}`}>
-                <span className={`text-xs font-bold uppercase tracking-wider mb-2 ${stat.labelCls}`}>{stat.label}</span>
-                <span className={`text-3xl font-black ${stat.valCls}`}>{stat.val}</span>
+              <div key={idx} className={`border rounded-xl p-4 flex flex-col items-center justify-center text-center shadow-sm ${stat.container}`}>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">{stat.label}</span>
+                <span className={`text-2xl font-black ${stat.valCls}`}>{stat.val}</span>
               </div>
             ))}
           </div>
-
-          {/* Warehouse Breakdown */}
-          <div className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden flex flex-col min-h-[200px]">
-            <div className="p-5 border-b border-border bg-muted/20">
-              <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
-                <MapPin className="w-5 h-5 text-primary" />
-                {t('item.warehouseBreakdown')}
-              </h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Description</label>
+              <p className="text-sm text-foreground bg-muted/30 p-4 rounded-xl border border-border min-h-[106px] leading-relaxed">
+                {item.description || t('category.noDescription', 'No description provided.')}
+              </p>
             </div>
-            <div className="flex-1 overflow-auto">
-              {item.warehouseStock.length === 0 ? (
-                <div className="p-8 text-center text-muted-foreground">
-                  {t('warehouse.noGodowns', 'No stock assigned to warehouses.')}
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 self-start">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Wtd. Avg. Cost/Unit</label>
+                <div className="flex h-12 items-center px-4 font-semibold text-foreground bg-muted/10 border border-border rounded-xl">
+                  ₹{(item.purchaseCost || 0).toLocaleString()}
                 </div>
-              ) : (
-                <DataTable
-                  data={item.warehouseStock}
-                  columns={warehouseBreakdownColumns}
-                />
-              )}
+              </div>
+              
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Total Inventory Value</label>
+                <div className="flex h-12 items-center px-4 font-bold text-amber-600 bg-amber-500/5 border border-amber-500/25 rounded-xl">
+                  ₹{((item.purchaseCost || 0) * (item.totalStock || 0)).toLocaleString()}
+                </div>
+              </div>
             </div>
           </div>
-
-          {/* Movement History */}
-          <div className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden flex flex-col flex-1 min-h-[300px]">
-            <div className="p-5 border-b border-border flex justify-between items-center bg-muted/20">
-              <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
-                <Clock className="w-5 h-5 text-primary" />
-                {t('item.recentMovement')}
-              </h3>
-            </div>
-            <div className="flex-1 overflow-auto">
-              {ledgerLoading ? (
-                <div className="flex h-32 items-center justify-center">
-                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                </div>
-              ) : movements.length === 0 ? (
-                <div className="p-8 text-center text-muted-foreground">
-                  No stock movements recorded yet.
-                </div>
-              ) : (
-                <DataTable
-                  data={movements}
-                  columns={movementColumns}
-                />
-              )}
-            </div>
-          </div>
-
         </div>
 
+        {/* Section 2: Warehouse Location Breakdown */}
+        <div className="p-6">
+          <div className="flex items-center gap-2 text-foreground font-bold text-lg mb-4">
+            <MapPin className="w-5 h-5 text-primary" />
+            <h2>{t('item.warehouseBreakdown')}</h2>
+          </div>
+          <div className="border border-border rounded-xl overflow-hidden bg-background">
+            {item.warehouseStock.length === 0 ? (
+              <div className="p-8 text-center text-muted-foreground text-sm">
+                {t('warehouse.noGodowns', 'No stock assigned to warehouses.')}
+              </div>
+            ) : (
+              <DataTable
+                data={item.warehouseStock}
+                columns={warehouseBreakdownColumns}
+              />
+            )}
+          </div>
+        </div>
       </div>
 
-      <AdjustStockModal
-        isOpen={adjustStockModalOpen}
-        onClose={() => setAdjustStockModalOpen(false)}
-        item={item}
-        onSuccess={() => {
-          refetchItem();
-        }}
-      />
     </div>
   );
 }

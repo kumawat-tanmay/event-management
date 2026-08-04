@@ -3,17 +3,16 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import useSWR from 'swr';
-import { Plus, Download, Box, Eye, Edit, Tag, Layers, AlertCircle, Trash2, Search, Loader2, X, Save } from 'lucide-react';
+import { Plus, Box, Eye, Edit, Layers, AlertCircle, Trash2, Search, Loader2, Truck } from 'lucide-react';
 import { ConfirmModal } from '@/components/common/ConfirmModal';
 import { DataTable } from '@/components/common/DataTable';
 import { Button } from '@/components/common/Button';
-import { Input } from '@/components/common/Input';
+
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { StatsCard } from '@/components/common/StatsCard';
 import { cn } from '@/utils/cn';
 import { inventoryService, Item } from '@/lib/services/inventory.services';
 import { ActionGuard } from '@/components/auth/ActionGuard';
-import { AdjustStockModal } from './AdjustStockModal';
 import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
 
@@ -23,7 +22,6 @@ export function ItemsView() {
   const [activeTab, setActiveTab] = useState('ALL ITEMS');
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
-  const [adjustStockItem, setAdjustStockItem] = useState<Item | null>(null);
 
   // ponytail: removed unnecessary warehouse fetch and zoneId mapping for item category
 
@@ -75,6 +73,7 @@ export function ItemsView() {
   const totalItemsCount = items.length;
   const totalAvailableStock = items.reduce((acc, curr) => acc + (curr.availableStock || 0), 0);
   const totalDamagedStock = items.reduce((acc, curr) => acc + (curr.damagedStock || 0), 0);
+  const totalDispatchedStock = items.reduce((acc, curr) => acc + (curr.dispatchedStock || 0), 0);
 
   const columns = [
     {
@@ -134,17 +133,6 @@ export function ItemsView() {
                 <Edit className="w-4 h-4" />
               </Button>
             </Link>
-          </ActionGuard>
-          <ActionGuard permission="inventory.update">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-muted-foreground hover:text-emerald-500 hover:bg-emerald-500/10 transition-colors"
-              title="Adjust Stock"
-              onClick={() => setAdjustStockItem(row)}
-            >
-              <Layers className="w-4 h-4" />
-            </Button>
           </ActionGuard>
           <ActionGuard permission="inventory.delete">
             <Button
@@ -221,6 +209,13 @@ export function ItemsView() {
           subtitle="Warning"
           colorTheme="error"
         />
+        <StatsCard
+          title={t('item.dispatchedStock', 'Dispatched Stock')}
+          value={totalDispatchedStock}
+          icon={Truck}
+          subtitle="On Site"
+          colorTheme="blue"
+        />
       </div>
 
       {/* Table */}
@@ -286,14 +281,6 @@ export function ItemsView() {
         confirmText={t('item.deleteItem')}
       />
 
-      <AdjustStockModal 
-        isOpen={!!adjustStockItem}
-        onClose={() => setAdjustStockItem(null)}
-        item={adjustStockItem}
-        onSuccess={() => {
-          mutate();
-        }}
-      />
     </div>
   );
 }

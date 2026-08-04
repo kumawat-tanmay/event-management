@@ -24,7 +24,7 @@ const transferSchema = {
 
 router.use(protect);
 
-const opsRoles = ['Owner', 'Admin', 'Store Manager'];
+const opsRoles = ['Owner', 'Admin', 'Manager'];
 
 router.get('/', authorize(...opsRoles, 'Manager'), warehouseTransferController.getTransfers);
 router.get('/:id', authorize(...opsRoles, 'Manager'), warehouseTransferController.getTransferById);

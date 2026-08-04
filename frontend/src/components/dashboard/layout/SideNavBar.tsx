@@ -60,7 +60,7 @@ interface NavLink {
 
 export const erpNavLinks: NavLink[] = [
   { name: 'Dashboard', tKey: 'sidebar.dashboard', href: '/', icon: Home, permission: 'dashboard.view' },
-  { name: 'Calendar', tKey: 'sidebar.calendar', href: '/calendar', icon: CalendarDays, permission: 'operations.view' },
+  { name: 'Calendar', tKey: 'sidebar.calendar', href: '/calendar', icon: CalendarDays, permission: 'calendar.view' },
   {
     name: 'CRM & Parties',
     tKey: 'sidebar.crm',

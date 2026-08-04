@@ -24,7 +24,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       <SideNavBar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
       
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col md:ml-72 w-full transition-all duration-300 print:ml-0">
+      <div className="flex-1 flex flex-col md:pl-72 w-full min-w-0 transition-all duration-300 print:pl-0">
         <TopNavBar onMenuClick={() => setIsSidebarOpen(true)} />
         
         {/* Scrollable Page Content */}

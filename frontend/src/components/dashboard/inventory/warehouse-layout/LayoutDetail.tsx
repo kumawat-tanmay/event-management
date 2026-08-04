@@ -54,7 +54,6 @@ export default function LayoutDetail({ id }: LayoutDetailProps) {
       await warehouseService.updateWarehouse(warehouse._id, {
         name: warehouse.name,
         code: warehouse.code,
-        location: warehouse.location,
         zones: updatedZones
       });
       toast.success(successMsg);
@@ -240,7 +239,7 @@ export default function LayoutDetail({ id }: LayoutDetailProps) {
                 {warehouse.code || 'NO-CODE'}
               </span>
               <span className="text-xs text-muted-foreground font-semibold flex items-center gap-1">
-                <Building2 className="w-3.5 h-3.5" /> {warehouse.location || 'No Location registered'}
+                <Building2 className="w-3.5 h-3.5" /> {warehouse.address || 'No Address registered'}
               </span>
             </div>
             <h1 className="text-2xl font-bold text-foreground mt-0.5">
@@ -381,7 +380,6 @@ export default function LayoutDetail({ id }: LayoutDetailProps) {
                               {rack.capacity} Capacity
                             </span>
                           )}
-
                           {/* Quick Edit Rack button */}
                           <button
                             type="button"

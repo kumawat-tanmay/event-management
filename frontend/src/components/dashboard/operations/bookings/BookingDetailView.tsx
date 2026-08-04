@@ -4,12 +4,14 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, useParams } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
-import { Calendar, MapPin, Phone, Mail, ArrowLeft, Edit, FileText, Printer, ShieldAlert, CreditCard } from 'lucide-react';
+import { Calendar, MapPin, Phone, Mail, ArrowLeft, Edit, FileText, Printer, ShieldAlert, CreditCard, MessageSquare } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { bookingService, Booking } from '@/lib/services/booking.services';
 import { ActionGuard } from '@/components/auth/ActionGuard';
+import { generatePdfFromHtml, sharePdfViaWhatsApp } from '@/utils/pdfShare';
+import { getBookingAgreementPdfHtml } from '@/utils/pdfTemplates';
 
 export function BookingDetailView() {
   const { t } = useTranslation();
@@ -33,6 +35,36 @@ export function BookingDetailView() {
     };
     fetchBooking();
   }, [id]);
+
+  const handleSendWhatsApp = async () => {
+    if (!booking) return;
+    
+    const htmlContent = getBookingAgreementPdfHtml(booking);
+    const filename = `Agreement_${booking.bookingId}.pdf`;
+    const customerPhone = booking.customer?.phone || '';
+    
+    const message = `🏕️ *Krishna Tent & Events*
+
+Dear ${booking.customer?.name || 'Customer'},
+
+Please find attached your *Rental Agreement #${booking.bookingId}* for the event:
+📋 *${booking.eventTitle}*
+📅 ${new Date(booking.eventStartDate).toLocaleDateString()} to ${new Date(booking.eventEndDate).toLocaleDateString()}
+📍 ${booking.venueAddress}
+💰 Grand Total: ₹${(booking.grandTotal || 0).toLocaleString()}
+✅ Advance Paid: ₹${(booking.advancePaid || 0).toLocaleString()}
+📝 Balance Due: ₹${(booking.balanceAmount || 0).toLocaleString()}
+
+Thank you for choosing Krishna Tent & Events!
+📞 +91 98290 12345`;
+
+    const blob = await generatePdfFromHtml(htmlContent, filename);
+    if (blob) {
+      await sharePdfViaWhatsApp(blob, filename, customerPhone, message);
+    } else {
+      alert("Failed to generate PDF");
+    }
+  };
 
   if (loading) return <div className="p-8 text-center text-muted-foreground animate-pulse">{t('crm.loading', 'Loading...')}</div>;
   if (!booking) return <div className="p-8 text-center text-error">Booking not found.</div>;
@@ -82,6 +114,16 @@ export function BookingDetailView() {
               </Button>
             </Link>
           </ActionGuard>
+          
+          <Button 
+            variant="outline" 
+            className="flex items-center gap-2 text-emerald-600 border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700"
+            onClick={handleSendWhatsApp}
+          >
+            <MessageSquare className="w-4 h-4" />
+            Send to WhatsApp
+          </Button>
+
           <Link href={`/operations/bookings/agreement?id=${booking._id}`}>
             <Button variant="outline" className="flex items-center gap-2">
               <Printer className="w-4 h-4" />

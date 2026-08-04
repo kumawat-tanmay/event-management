@@ -17,10 +17,8 @@ exports.createWarehouseSchema = {
   body: z.object({
     name: z.string().min(1, 'Warehouse name is required'),
     code: z.string().optional(),
-    location: z.string().optional(),
     address: z.string().optional(),
     phone: z.string().optional(),
-    capacity: z.union([z.number(), z.string().regex(/^\d+$/).transform(Number)]).optional(),
     managerId: z.string().optional(),
     incharge: z.string().optional(),
     isDefault: z.boolean().optional(),
@@ -33,10 +31,8 @@ exports.updateWarehouseSchema = {
   body: z.object({
     name: z.string().min(1, 'Warehouse name cannot be empty').optional(),
     code: z.string().optional(),
-    location: z.string().optional(),
     address: z.string().optional(),
     phone: z.string().optional(),
-    capacity: z.union([z.number(), z.string().regex(/^\d+$/).transform(Number)]).optional(),
     managerId: z.string().optional(),
     incharge: z.string().optional(),
     isDefault: z.boolean().optional(),

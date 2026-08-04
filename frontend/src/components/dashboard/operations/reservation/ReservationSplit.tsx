@@ -250,7 +250,7 @@ export function ReservationSplit() {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="border-b border-border bg-muted/40 font-black text-muted-foreground uppercase tracking-wider">
+                <tr className="border-b border-border bg-muted/40 font-black text-muted-foreground uppercase tracking-wider whitespace-nowrap">
                   <th className="p-4">Item</th>
                   <th className="p-4">Code</th>
                   <th className="p-4 text-center">Required Qty</th>
@@ -260,7 +260,7 @@ export function ReservationSplit() {
               </thead>
               <tbody className="divide-y divide-border text-foreground font-medium">
                 {items.map((item) => (
-                  <tr key={item.id} className="hover:bg-muted/10">
+                  <tr key={item.id} className="hover:bg-muted/10 whitespace-nowrap">
                     <td className="p-4 font-bold text-foreground">{item.name}</td>
                     <td className="p-4 text-muted-foreground font-mono text-[11px]">{item.code}</td>
                     <td className="p-4 text-center font-black">{item.required}</td>
@@ -307,7 +307,7 @@ export function ReservationSplit() {
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
-                  <tr className="border-b border-border bg-muted/40 font-black text-muted-foreground uppercase tracking-wider">
+                  <tr className="border-b border-border bg-muted/40 font-black text-muted-foreground uppercase tracking-wider whitespace-nowrap">
                     <th className="p-4">Item Details</th>
                     <th className="p-4 text-center">Required Qty</th>
                     {warehouses.map(w => (
@@ -329,7 +329,7 @@ export function ReservationSplit() {
                     const isOver = allocatedSum > item.required;
 
                     return (
-                      <tr key={item.id} className="hover:bg-muted/10 transition-colors">
+                      <tr key={item.id} className="hover:bg-muted/10 transition-colors whitespace-nowrap">
                         <td className="p-4">
                           <p className="font-bold text-foreground text-sm">{item.name}</p>
                           <span className="text-[10px] text-muted-foreground font-mono mt-0.5 block">{item.code}</span>
@@ -338,10 +338,12 @@ export function ReservationSplit() {
                         {warehouses.map(w => (
                           <td key={w.id} className="p-4 text-center">
                             <input
-                              type="number"
-                              min="0"
-                              value={item.allocations[w.id] || ''}
-                              onChange={(e) => handleQtyChange(item.id, w.id, Number(e.target.value))}
+                              type="text"
+                              value={item.allocations[w.id] === 0 ? '' : (item.allocations[w.id] || '')}
+                              onChange={(e) => {
+                                const val = e.target.value.replace(/[^0-9]/g, '');
+                                handleQtyChange(item.id, w.id, val === '' ? 0 : Number(val));
+                              }}
                               className="w-16 px-1 py-1.5 border border-border focus:border-primary text-center rounded-md font-bold text-sm bg-background transition-colors outline-none focus:ring-2 focus:ring-primary/20"
                               placeholder="0"
                             />

@@ -73,7 +73,6 @@ exports.getReport = async (req, res) => {
           name: item.name,
           sku: item.sku || item.code || '',
 
-          rentalPrice: item.rentalPrice || 0,
           purchaseCost: item.purchaseCost || 0,
           minStockAlert: item.minStockAlert || 0,
           isActive: item.isActive

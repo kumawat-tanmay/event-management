@@ -28,7 +28,7 @@ const suggestSchema = {
 router.use(protect);
 
 // Only specific roles can manage reservations
-const opsRoles = ['Owner', 'Admin', 'Store Manager'];
+const opsRoles = ['Owner', 'Admin', 'Manager'];
 
 router.get('/', authorize(...opsRoles, 'Manager'), reservationController.getAllReservations);
 router.get('/booking/:bookingId', authorize(...opsRoles, 'Manager'), reservationController.getReservationByBookingId);

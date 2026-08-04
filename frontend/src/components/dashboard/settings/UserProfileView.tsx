@@ -1,32 +1,85 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/common/Card';
+import React, { useState, useEffect, useRef } from 'react';
+import { useRouter, useParams } from 'next/navigation';
+import { Building2, Save, Upload, CheckCircle2, ShieldCheck, Mail, Phone, MapPin, FileText, Image as ImageIcon, Camera, User, Lock, Loader2, Calendar, UserCheck, Key, ArrowLeft, Shield } from 'lucide-react';
 import { Button } from '@/components/common/Button';
-import { ActionGuard } from '@/components/auth/ActionGuard';
 import { Input } from '@/components/common/Input';
 import { useAuth } from '@/hooks/useAuth';
 import { authService } from '@/lib/services/auth.services';
+import { userService } from '@/lib/services/user.services';
+import { roleService, Role } from '@/lib/services/role.services';
 import { toast } from 'react-hot-toast';
-import { Camera, User, Lock, Save, Loader2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import useSWR from 'swr';
 
-export const UserProfileView = () => {
-  const { user, token, login, role } = useAuth();
+export function UserProfileView() {
+  const { t } = useTranslation();
+  const router = useRouter();
+  const params = useParams();
+  const id = params?.id as string;
+  const isIdMode = !!id;
 
-  // Profile State
-  const [name, setName] = useState(user?.name || '');
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(user?.avatar || null);
+  const { user, token, login, role, logout } = useAuth();
+
+  // Profile States
+  const [isEditing, setIsEditing] = useState(isIdMode);
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [address, setAddress] = useState('');
+  const [dob, setDob] = useState('');
+  const [gender, setGender] = useState('');
+  const [description, setDescription] = useState('');
+
+  // ID mode specific states
+  const [roleName, setRoleName] = useState('');
+  const [status, setStatus] = useState('Active');
+  const [isActive, setIsActive] = useState(true);
+
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Security State
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+  // Fetch target User details for ID mode
+  const { data: fetchedUser, isLoading: userLoading, mutate: mutateUser } = useSWR(
+    isIdMode ? `user-profile-${id}` : null,
+    () => userService.getUserById(id)
+  );
+
+  // Fetch Roles list for ID mode
+  const { data: roles } = useSWR<Role[]>(
+    isIdMode ? 'roles' : null,
+    roleService.getRoles
+  );
+
+  const displayedUser = isIdMode ? fetchedUser : user;
+
+  // Populate state on load or when user data changes
+  useEffect(() => {
+    if (displayedUser) {
+      setName(displayedUser.name || '');
+      setPhone(displayedUser.phone || '');
+      setAddress(displayedUser.address || '');
+      setDob(displayedUser.dob ? new Date(displayedUser.dob).toISOString().split('T')[0] : '');
+      setGender(displayedUser.gender || '');
+      setDescription(displayedUser.description || '');
+      setAvatarPreview(displayedUser.avatar || null);
+
+      if (isIdMode) {
+        const userRole = displayedUser.role;
+        const roleStr = (typeof userRole === 'object' && userRole !== null && 'name' in userRole)
+          ? (userRole as { name: string }).name
+          : (typeof userRole === 'string' ? userRole : '');
+        setRoleName(roleStr || '');
+        setStatus(displayedUser.status || (displayedUser.isActive ? 'Active' : 'Inactive'));
+        setIsActive(displayedUser.isActive !== false);
+      }
+    }
+  }, [displayedUser, isIdMode]);
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (isIdMode) return; // Admins don't upload avatars for other users here
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       if (file.size > 5 * 1024 * 1024) {
@@ -38,231 +91,378 @@ export const UserProfileView = () => {
     }
   };
 
+  const handleCancelProfile = () => {
+    if (isIdMode) {
+      router.push('/settings/users');
+      return;
+    }
+    if (displayedUser) {
+      setName(displayedUser.name || '');
+      setPhone(displayedUser.phone || '');
+      setAddress(displayedUser.address || '');
+      setDob(displayedUser.dob ? new Date(displayedUser.dob).toISOString().split('T')[0] : '');
+      setGender(displayedUser.gender || '');
+      setDescription(displayedUser.description || '');
+      setAvatarPreview(displayedUser.avatar || null);
+      setAvatarFile(null);
+    }
+    setIsEditing(false);
+  };
+
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return toast.error('Name cannot be empty');
 
+    setIsUpdatingProfile(true);
+    const toastId = toast.loading(isIdMode ? 'Saving user changes...' : 'Saving profile changes...');
     try {
-      setIsUpdatingProfile(true);
-      const formData = new FormData();
-      formData.append('name', name);
-      if (avatarFile) {
-        formData.append('avatar', avatarFile);
-      }
+      if (isIdMode) {
+        // Admin updates another user's profile details
+        await userService.updateUser(id, {
+          name: name.trim(),
+          phone: phone.trim(),
+          address: address.trim(),
+          dob: dob || undefined,
+          gender,
+          description: description.trim(),
+          role: roleName,
+          status,
+          isActive
+        });
+        toast.success('User updated successfully', { id: toastId });
+        mutateUser();
+        setIsEditing(false);
+        router.push('/settings/users');
+      } else {
+        // Logged-in user updates their own profile
+        const formData = new FormData();
+        formData.append('name', name.trim());
+        formData.append('phone', phone.trim());
+        formData.append('address', address.trim());
+        formData.append('dob', dob || '');
+        formData.append('gender', gender);
+        formData.append('description', description.trim());
+        if (avatarFile) {
+          formData.append('avatar', avatarFile);
+        }
 
-      const res = await authService.updateProfile(formData);
-      if (res.success) {
-        toast.success(res.message || 'Profile updated successfully');
-        // Update Redux state
-        login(res.data, res.data.token || token);
-        setAvatarFile(null); // Clear file after upload
+        const res = await authService.updateProfile(formData);
+        if (res.success) {
+          toast.success(res.message || 'Profile updated successfully', { id: toastId });
+          login(res.data, res.data.token || token);
+          setAvatarFile(null);
+          setIsEditing(false);
+        }
       }
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Failed to update profile');
+      toast.error(err?.response?.data?.message || err?.message || 'Failed to save changes', { id: toastId });
     } finally {
       setIsUpdatingProfile(false);
     }
   };
 
-  const handlePasswordSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!currentPassword) return toast.error('Please enter your current password');
-    if (newPassword.length < 6) return toast.error('New password must be at least 6 characters');
-    if (newPassword !== confirmPassword) return toast.error('Passwords do not match');
-
-    try {
-      setIsUpdatingPassword(true);
-      const res = await authService.updatePassword({ currentPassword, newPassword });
-      if (res.success) {
-        toast.success(res.message || 'Password updated successfully');
-        setCurrentPassword('');
-        setNewPassword('');
-        setConfirmPassword('');
-        // Update token in Redux if it rotated
-        if (res.data?.token) {
-          login(user!, res.data.token);
-        }
-      }
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Failed to update password');
-    } finally {
-      setIsUpdatingPassword(false);
-    }
-  };
+  if (isIdMode && userLoading) {
+    return (
+      <div className="flex h-[400px] items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
-    <div className="p-6 space-y-6 w-full">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 dark:text-white mb-2">My Profile</h1>
-          <p className="text-muted-foreground text-lg">Manage your personal information and account security.</p>
-        </div>
-      </div>
+    <form onSubmit={handleProfileSubmit} className="flex flex-col p-4 md:p-6 lg:p-8 w-full pb-16">
+      {/* Main Single Unified Card Sheet */}
+      <div className="bg-card border border-border rounded-3xl shadow-sm overflow-hidden divide-y divide-border">
+        {/* ─── Top Header Section ───────────────────────────────────────────── */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-6 md:p-8 border-b border-border/40 bg-muted/20">
+          <div className="flex items-center gap-4">
+            {isIdMode && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => router.push('/settings/users')}
+                className="shrink-0"
+                disabled={isUpdatingProfile}
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </Button>
+            )}
+            <div className="w-12 h-12 rounded-2xl bg-[#8a5a32]/10 text-[#8a5a32] dark:text-[#c28854] flex items-center justify-center font-bold shrink-0">
+              <User size={24} />
+            </div>
+            <div>
+              <h1 className="text-xl sm:text-2xl font-black font-display text-foreground tracking-tight">
+                {isIdMode ? 'Edit User Profile' : 'My Profile'}
+              </h1>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {isIdMode 
+                  ? `Update profile details and role configurations for ${name || 'user'}.`
+                  : 'Manage your personal profile details, contact information, and security.'
+                }
+              </p>
+            </div>
+          </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        
-        {/* Card A: Personal Info */}
-        <Card className="shadow-lg border-gray-200/60 dark:border-gray-800 overflow-hidden transition-all duration-300 hover:shadow-xl">
-          <div className="h-2 bg-gradient-to-r from-amber-400 to-amber-600 w-full" />
-          <CardHeader className="bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-800 pb-4">
-            <CardTitle className="text-xl flex items-center gap-3 font-semibold text-gray-900 dark:text-gray-100">
-              <div className="p-2 bg-amber-100 dark:bg-amber-900/40 rounded-lg">
-                <User className="h-5 w-5 text-amber-600 dark:text-amber-500" />
+          <div className="flex items-center gap-3">
+            {isEditing ? (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleCancelProfile}
+                  disabled={isUpdatingProfile}
+                  className="rounded-xl px-5 py-2.5"
+                >
+                  {t('profile.cancel', 'Cancel')}
+                </Button>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  disabled={isUpdatingProfile}
+                  className="flex items-center gap-2 rounded-xl px-6 py-2.5 shrink-0"
+                >
+                  {isUpdatingProfile ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save size={18} />}
+                  {t('profile.saveChanges', 'Save Changes')}
+                </Button>
+              </>
+            ) : (
+              <Button
+                type="button"
+                variant="primary"
+                onClick={() => setIsEditing(true)}
+                className="rounded-xl px-6 py-2.5 shrink-0"
+              >
+                {t('profile.editProfile', 'Edit Profile')}
+              </Button>
+            )}
+          </div>
+        </div>
+        {/* Section 1: Personal Information */}
+        <div className="p-6 md:p-8 space-y-6">
+          <div className="flex items-center gap-2 text-foreground font-bold text-lg mb-2">
+            <User className="w-5 h-5 text-primary" />
+            <h2>{t('profile.personalInfo', 'Personal Information')}</h2>
+          </div>
+
+          <div className="flex flex-col md:flex-row gap-8 items-start">
+            {/* Avatar block */}
+            <div className="flex flex-col items-center gap-2 shrink-0">
+              <div
+                className={`relative group w-32 h-32 rounded-full border-4 border-card shadow-lg flex items-center justify-center bg-muted/40 overflow-hidden ${!isIdMode && isEditing ? 'cursor-pointer' : ''}`}
+                onClick={() => !isIdMode && isEditing && fileInputRef.current?.click()}
+              >
+                {avatarPreview ? (
+                  /* eslint-disable-next-next/no-img-element */
+                  <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
+                ) : (
+                  <User className="w-14 h-14 text-muted-foreground opacity-60" />
+                )}
+                {!isIdMode && isEditing && (
+                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-xs font-semibold">
+                    <Camera size={20} className="mb-1" />
+                    <span>Upload</span>
+                  </div>
+                )}
               </div>
-              Personal Information
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-6">
-            <form onSubmit={handleProfileSubmit} className="space-y-7">
-              
-              {/* Avatar Upload */}
-              <div className="flex flex-col sm:flex-row items-center gap-6">
-                <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-                  <div className="h-28 w-28 rounded-full border-4 border-white dark:border-gray-800 shadow-xl overflow-hidden bg-gray-100 dark:bg-gray-800 flex items-center justify-center transition-transform duration-300 group-hover:scale-105">
-                    {avatarPreview ? (
-                      <img src={avatarPreview} alt="Avatar" className="h-full w-full object-cover" />
+              <span className="text-[10px] text-muted-foreground font-medium">{t('profile.recommendSize', 'Recommended: JPG/PNG (Max 5MB)')}</span>
+              <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                accept="image/*"
+                onChange={handleAvatarChange}
+                disabled={!isEditing || isIdMode}
+              />
+            </div>
+
+            {/* Form Fields Grid */}
+            <div className="flex-1 w-full grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-foreground uppercase tracking-wider block">{t('profile.fullName', 'Full Name')} *</label>
+                <Input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g. John Doe"
+                  className="rounded-xl font-medium"
+                  required
+                  disabled={!isEditing}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-foreground uppercase tracking-wider block">{t('profile.email', 'Email Address (Read-only)')}</label>
+                <Input
+                  value={displayedUser?.email || ''}
+                  disabled
+                  className="rounded-xl font-medium bg-muted/20 opacity-80 cursor-not-allowed"
+                />
+              </div>
+
+              {isIdMode ? (
+                /* Editable role dropdown for admin in ID mode */
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-foreground uppercase tracking-wider block">{t('profile.roleAssignment', 'Role Assignment')} *</label>
+                  {isEditing ? (
+                    <select
+                      value={roleName}
+                      onChange={(e) => setRoleName(e.target.value)}
+                      disabled={!isEditing}
+                      required
+                      className="flex h-10 w-full rounded-xl border border-input bg-background text-foreground px-3.5 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring font-medium"
+                    >
+                      <option value="" disabled>Select role...</option>
+                      {roles?.map(r => (
+                        <option key={r._id} value={r.name}>{r.name}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div className="flex items-center h-10 px-3 bg-muted/10 border border-border rounded-xl font-semibold text-sm text-foreground capitalize">
+                      <Shield className="w-3.5 h-3.5 text-primary mr-2" />
+                      {roleName || 'Staff'}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* Read-only role display for self profile */
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-foreground uppercase tracking-wider block">{t('profile.currentRole', 'Current Role')}</label>
+                  <div className="flex items-center h-10 px-3 bg-muted/10 border border-border rounded-xl font-semibold text-sm text-foreground capitalize">
+                    <Shield className="w-3.5 h-3.5 text-primary mr-2" />
+                    {role || 'Staff'}
+                  </div>
+                </div>
+              )}
+
+              {isIdMode && (
+                /* Editable status/active settings in ID mode */
+                <>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-foreground uppercase tracking-wider block">{t('profile.status', 'Status')}</label>
+                    {isEditing ? (
+                      <select
+                        value={status}
+                        onChange={(e) => setStatus(e.target.value)}
+                        disabled={!isEditing}
+                        required
+                        className="flex h-10 w-full rounded-xl border border-input bg-background text-foreground px-3.5 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring font-medium"
+                      >
+                        <option value="Active">{t('profile.active', 'Active')}</option>
+                        <option value="Pending">{t('profile.pending', 'Pending')}</option>
+                        <option value="Inactive">{t('profile.inactive', 'Inactive')}</option>
+                      </select>
                     ) : (
-                      <User className="h-12 w-12 text-gray-400" />
+                      <div className="flex items-center h-10 px-3 bg-muted/10 border border-border rounded-xl font-semibold text-sm text-foreground capitalize">
+                        {status === 'Active' ? t('profile.active', 'Active') : status === 'Pending' ? t('profile.pending', 'Pending') : t('profile.inactive', 'Inactive')}
+                      </div>
                     )}
                   </div>
-                  <div className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <Camera className="h-8 w-8 text-white" />
+
+                  <div className="flex items-center gap-3 pt-2">
+                    <input
+                      type="checkbox"
+                      id="isActive"
+                      checked={isActive}
+                      onChange={(e) => setIsActive(e.target.checked)}
+                      disabled={!isEditing}
+                      className="w-4 h-4 rounded border-border text-primary focus:ring-primary/50 disabled:opacity-50"
+                    />
+                    <label htmlFor="isActive" className="text-sm font-semibold text-foreground cursor-pointer disabled:opacity-50">
+                      {t('profile.accountActive', 'Account Active (Access Granted)')}
+                    </label>
                   </div>
-                  <button
-                    type="button"
-                    className="absolute bottom-0 right-0 p-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-full shadow-lg transition-transform hover:scale-110 border-2 border-white dark:border-gray-800"
-                  >
-                    <Camera className="h-4 w-4" />
-                  </button>
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    className="hidden"
-                    accept="image/*"
-                    onChange={handleAvatarChange}
-                  />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-lg">Profile Picture</h3>
-                  <p className="text-sm text-muted-foreground mt-1">Recommended: Square JPG, PNG. Max 5MB.</p>
-                </div>
+                </>
+              )}
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-foreground uppercase tracking-wider block">{t('profile.contactPhone', 'Contact Phone')}</label>
+                <Input
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="e.g. +91 98290 12345"
+                  className="rounded-xl font-medium"
+                  disabled={!isEditing}
+                />
               </div>
 
-              {/* Basic Fields */}
-              <div className="space-y-5">
-                <div className="space-y-1.5">
-                  <label className="text-sm font-semibold text-gray-900 dark:text-gray-200 block">Full Name</label>
-                  <Input 
-                    value={name} 
-                    onChange={(e) => setName(e.target.value)} 
-                    placeholder="Enter your name" 
-                    className="h-11 shadow-sm border-gray-300 dark:border-gray-700 focus-visible:ring-amber-500"
-                    required 
-                  />
-                </div>
-                
-                <div className="space-y-1.5">
-                  <label className="text-sm font-semibold text-gray-900 dark:text-gray-200 block">Email Address (Read-only)</label>
-                  <Input 
-                    value={user?.email || ''} 
-                    disabled 
-                    className="h-11 bg-muted/80 text-foreground font-medium opacity-100 cursor-not-allowed shadow-inner border-gray-200 dark:border-gray-800" 
-                  />
-                  <p className="text-xs text-muted-foreground mt-1.5 font-medium">Contact your administrator to change your email.</p>
-                </div>
-
-                <div className="space-y-1.5 pt-3">
-                  <label className="text-sm font-semibold text-gray-900 dark:text-gray-200 block">Current Role</label>
-                  <div className="flex items-center gap-2 mt-2">
-                    <span className="px-5 py-2 bg-gradient-to-r from-amber-100 to-orange-100 dark:from-amber-900/40 dark:to-orange-900/40 text-amber-900 dark:text-amber-300 text-sm font-bold rounded-full capitalize border border-amber-200 dark:border-amber-700/50 shadow-sm flex items-center gap-2">
-                      <div className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
-                      {role || 'Staff'}
-                    </span>
-                  </div>
-                </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-foreground uppercase tracking-wider block">{t('profile.dob', 'Date of Birth')}</label>
+                <Input
+                  type="date"
+                  value={dob}
+                  onChange={(e) => setDob(e.target.value)}
+                  className="rounded-xl font-medium"
+                  disabled={!isEditing}
+                />
               </div>
 
-              <div className="pt-6 flex justify-end">
-                <ActionGuard permission="dashboard.view">
-                  <Button type="submit" disabled={isUpdatingProfile || (!name.trim())} className="h-11 px-8 bg-amber-600 hover:bg-amber-700 text-white shadow-md hover:shadow-lg transition-all flex items-center gap-2 text-base font-medium rounded-xl">
-                    {isUpdatingProfile ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
-                    Save Changes
-                  </Button>
-                </ActionGuard>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-
-        {/* Card B: Security */}
-        <Card className="shadow-lg border-gray-200/60 dark:border-gray-800 overflow-hidden transition-all duration-300 hover:shadow-xl h-fit">
-          <div className="h-2 bg-gradient-to-r from-gray-700 to-gray-900 dark:from-gray-600 dark:to-gray-800 w-full" />
-          <CardHeader className="bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-800 pb-4">
-            <CardTitle className="text-xl flex items-center gap-3 font-semibold text-gray-900 dark:text-gray-100">
-              <div className="p-2 bg-gray-200 dark:bg-gray-800 rounded-lg">
-                <Lock className="h-5 w-5 text-gray-700 dark:text-gray-300" />
-              </div>
-              Security Settings
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-6">
-            <form onSubmit={handlePasswordSubmit} className="space-y-6">
-              <div className="p-4 bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300 text-sm rounded-xl mb-6 border border-blue-100 dark:border-blue-800/50 flex items-start gap-3">
-                <Lock className="h-5 w-5 shrink-0 mt-0.5" />
-                <p>If you logged in using Google, you may not have a traditional password set up unless you created one previously.</p>
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-foreground uppercase tracking-wider block">{t('profile.gender', 'Gender')}</label>
+                <select
+                  value={gender}
+                  onChange={(e) => setGender(e.target.value)}
+                  disabled={!isEditing}
+                  className="flex h-10 w-full rounded-xl border border-input bg-background text-foreground px-3.5 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring font-medium disabled:opacity-50"
+                >
+                  <option value="">{t('profile.selectGender', 'Select Gender...')}</option>
+                  <option value="Male">{t('profile.male', 'Male')}</option>
+                  <option value="Female">{t('profile.female', 'Female')}</option>
+                  <option value="Other">{t('profile.other', 'Other')}</option>
+                </select>
               </div>
 
-              <div className="space-y-5">
-                <div className="space-y-1.5">
-                  <label className="text-sm font-semibold text-gray-900 dark:text-gray-200 block">Current Password</label>
-                  <Input 
-                    type="password"
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    placeholder="Enter current password"
-                    className="h-11 shadow-sm border-gray-300 dark:border-gray-700 focus-visible:ring-gray-500"
-                    required
-                  />
-                </div>
-                
-                <div className="space-y-1.5">
-                  <label className="text-sm font-semibold text-gray-900 dark:text-gray-200 block">New Password</label>
-                  <Input 
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Min 6 characters"
-                    className="h-11 shadow-sm border-gray-300 dark:border-gray-700 focus-visible:ring-gray-500"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-sm font-semibold text-gray-900 dark:text-gray-200 block">Confirm New Password</label>
-                  <Input 
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Re-enter new password"
-                    className="h-11 shadow-sm border-gray-300 dark:border-gray-700 focus-visible:ring-gray-500"
-                    required
-                  />
-                </div>
+              <div className="sm:col-span-2 space-y-1.5">
+                <label className="text-xs font-bold text-foreground uppercase tracking-wider block">{t('profile.bio', 'Profile Description / Bio')}</label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Tell us about your role, specialization, or event execution experience..."
+                  rows={3}
+                  disabled={!isEditing}
+                  className="w-full rounded-xl border border-input bg-background px-3.5 py-2.5 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring font-medium disabled:opacity-50"
+                />
               </div>
 
-              <div className="pt-6 flex justify-end">
-                <ActionGuard permission="dashboard.view">
-                  <Button type="submit" disabled={isUpdatingPassword || !currentPassword || !newPassword || !confirmPassword} className="h-11 px-8 bg-gray-900 hover:bg-gray-800 text-white dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200 shadow-md hover:shadow-lg transition-all flex items-center gap-2 text-base font-medium rounded-xl">
-                    {isUpdatingPassword ? <Loader2 className="h-5 w-5 animate-spin" /> : <Lock className="h-5 w-5" />}
-                    Update Password
-                  </Button>
-                </ActionGuard>
+              <div className="sm:col-span-2 space-y-1.5">
+                <label className="text-xs font-bold text-foreground uppercase tracking-wider block">{t('profile.address', 'Home Address')}</label>
+                <textarea
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  placeholder="Enter complete home address details..."
+                  rows={2}
+                  disabled={!isEditing}
+                  className="w-full rounded-xl border border-input bg-background px-3.5 py-2.5 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring font-medium disabled:opacity-50"
+                />
               </div>
-            </form>
-          </CardContent>
-        </Card>
+            </div>
+          </div>
+        </div>
 
+        {/* Section 2: Account Security - Only visible for self profile */}
+        {!isIdMode && (
+          <div className="p-6 md:p-8">
+            <div className="flex items-center gap-2 text-foreground font-bold text-lg mb-4">
+              <Lock className="w-5 h-5 text-primary" />
+              <h2>{t('profile.security', 'Security Settings')}</h2>
+            </div>
+
+            <div className="max-w-xl space-y-4">
+              <p className="text-sm text-muted-foreground font-medium">
+                {t('profile.changePasswordDesc', 'To change or reset your account password, please proceed to the secure authentication reset page.')}
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => logout()}
+                className="rounded-xl px-5 py-2.5 flex items-center gap-2"
+              >
+                <Key className="w-4.5 h-4.5 text-muted-foreground" />
+                {t('profile.resetPassword', 'Reset / Change Password')}
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
-    </div>
+    </form>
   );
-};
+}

@@ -93,7 +93,7 @@ const getBookingById = async (req, res) => {
     const booking = await Booking.findOne({ _id: req.params.id, isDeleted: false })
       .populate('customer', 'name phone email address type gstNumber')
       .populate('quotation', 'quotationId status')
-      .populate('items.item', 'name code unit rentalPrice image')
+      .populate('items.item', 'name code unit image')
       .populate('assignedSupervisor', 'name phone')
       .populate('createdBy', 'name')
       .lean();

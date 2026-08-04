@@ -1,16 +1,20 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Building2, Save, Upload, CheckCircle2, ShieldCheck, Mail, Phone, MapPin, FileText, Image as ImageIcon } from 'lucide-react';
+import { Building2, Save, Upload, CheckCircle2, ShieldCheck, Mail, Phone, MapPin, FileText, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
 import { ActionGuard } from '@/components/auth/ActionGuard';
 import { settingsService, CompanySettings } from '@/lib/services/settings.services';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 
 export function CompanyProfileView() {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [originalData, setOriginalData] = useState<CompanySettings | null>(null);
 
   const [formData, setFormData] = useState<CompanySettings>({
     name: '',
@@ -32,6 +36,7 @@ export function CompanyProfileView() {
         const data = await settingsService.getCompany();
         if (data) {
           setFormData(data);
+          setOriginalData(data);
           if (data.logo) setLogoPreview(data.logo);
         }
       } catch (err: any) {
@@ -51,9 +56,26 @@ export function CompanyProfileView() {
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Logo image size must be less than 5MB');
+        return;
+      }
       setLogoFile(file);
       setLogoPreview(URL.createObjectURL(file));
     }
+  };
+
+  const handleCancel = () => {
+    if (originalData) {
+      setFormData(originalData);
+      if (originalData.logo) {
+        setLogoPreview(originalData.logo);
+      } else {
+        setLogoPreview('');
+      }
+      setLogoFile(null);
+    }
+    setIsEditing(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -65,6 +87,7 @@ export function CompanyProfileView() {
 
     try {
       setSaving(true);
+      let updated: CompanySettings;
       if (logoFile) {
         const payload = new FormData();
         payload.append('name', formData.name);
@@ -73,15 +96,16 @@ export function CompanyProfileView() {
         payload.append('address', formData.address || '');
         payload.append('gstin', formData.gstin || '');
         payload.append('logo', logoFile);
-        
-        const updated = await settingsService.updateCompany(payload);
-        setFormData(updated);
-        if (updated.logo) setLogoPreview(updated.logo);
+
+        updated = await settingsService.updateCompany(payload);
       } else {
-        const updated = await settingsService.updateCompany(formData);
-        setFormData(updated);
+        updated = await settingsService.updateCompany(formData);
       }
+      setFormData(updated);
+      setOriginalData(updated);
+      if (updated.logo) setLogoPreview(updated.logo);
       toast.success('Company settings updated successfully');
+      setIsEditing(false);
     } catch (err: any) {
       toast.error(err.response?.data?.message || err.message || 'Failed to update company settings');
     } finally {
@@ -101,8 +125,8 @@ export function CompanyProfileView() {
   return (
     <div className="w-full max-w-full pb-16">
       {/* ─── SINGLE UNIFIED CONTAINER ───────────────────────────────────────── */}
-      <form 
-        onSubmit={handleSubmit} 
+      <form
+        onSubmit={handleSubmit}
         className="w-full bg-card rounded-3xl border border-border/50 shadow-sm overflow-hidden"
       >
         {/* ─── Top Header Section ───────────────────────────────────────────── */}
@@ -114,30 +138,55 @@ export function CompanyProfileView() {
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-xl sm:text-2xl font-black font-display text-foreground tracking-tight">
-                  Company Settings
+                  {t('company.title', 'Company Settings')}
                 </h1>
                 {formData.isSetupComplete && (
                   <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-400 px-2.5 py-0.5 rounded-full">
-                    <CheckCircle2 size={12} /> Active ERP
+                    <CheckCircle2 size={12} /> {t('company.activeErp', 'Active ERP')}
                   </span>
                 )}
               </div>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Manage your event management business profile, branding logo, tax numbers, and contact details.
+                {t('company.subtitle', 'Configure organization details, identity branding, contact coordinates, and tax registrations.')}
               </p>
             </div>
           </div>
 
-          <ActionGuard permission="dashboard.view">
-            <Button
-              type="submit"
-              disabled={saving}
-              className="bg-[#8a5a32] hover:bg-[#6b4627] text-white font-semibold shadow-md gap-2 rounded-xl px-6 py-2.5 shrink-0"
-            >
-              <Save size={18} />
-              {saving ? 'Saving...' : 'Save Changes'}
-            </Button>
-          </ActionGuard>
+          <div className="flex items-center gap-3">
+            {isEditing ? (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleCancel}
+                  disabled={saving}
+                  className="rounded-xl px-5 py-2.5"
+                >
+                  {t('profile.cancel', 'Cancel')}
+                </Button>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  disabled={saving}
+                  className="flex items-center gap-2 rounded-xl px-6 py-2.5 shrink-0"
+                >
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save size={18} />}
+                  {saving ? t('company.saving', 'Saving...') : t('profile.saveChanges', 'Save Changes')}
+                </Button>
+              </>
+            ) : (
+              <ActionGuard permission="settings">
+                <Button
+                  type="button"
+                  variant="primary"
+                  onClick={() => setIsEditing(true)}
+                  className="rounded-xl px-6 py-2.5 shrink-0"
+                >
+                  {t('company.edit', 'Edit Settings')}
+                </Button>
+              </ActionGuard>
+            )}
+          </div>
         </div>
 
         <div className="p-6 md:p-8 space-y-8">
@@ -145,7 +194,7 @@ export function CompanyProfileView() {
           <div className="space-y-6">
             <h2 className="text-sm font-bold text-foreground uppercase tracking-wider flex items-center gap-2 border-b border-border/40 pb-2">
               <ImageIcon size={18} className="text-[#8a5a32]" />
-              Business Identity & Branding
+              {t('company.logo', 'Organization Logo')}
             </h2>
 
             <div className="flex flex-col md:flex-row gap-6 items-start">
@@ -158,23 +207,25 @@ export function CompanyProfileView() {
                   ) : (
                     <div className="text-center p-3 text-muted-foreground">
                       <Upload size={22} className="mx-auto mb-1 opacity-60" />
-                      <span className="text-[11px] font-medium block">Upload Logo</span>
+                      <span className="text-[11px] font-medium block">{t('company.uploadLogo', 'Upload Logo')}</span>
                     </div>
                   )}
-                  <label className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white cursor-pointer">
-                    <Upload size={18} className="mb-1" />
-                    <span className="text-[11px] font-semibold">Change Logo</span>
-                    <input type="file" accept="image/*" onChange={handleLogoChange} className="hidden" />
-                  </label>
+                  {isEditing && (
+                    <label className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white cursor-pointer">
+                      <Upload size={18} className="mb-1" />
+                      <span className="text-[11px] font-semibold">{t('company.changeLogo', 'Change Logo')}</span>
+                      <input type="file" accept="image/*" onChange={handleLogoChange} className="hidden" />
+                    </label>
+                  )}
                 </div>
-                <span className="text-[10px] text-muted-foreground font-medium">PNG / JPG 512x512px</span>
+                <span className="text-[10px] text-muted-foreground font-medium">{t('company.logoSizeHint', 'PNG / JPG (Max 5MB)')}</span>
               </div>
 
               {/* Company Form Inputs */}
               <div className="flex-1 space-y-4 w-full">
                 <div>
                   <label className="text-xs font-bold text-foreground uppercase tracking-wider mb-1.5 block">
-                    Company / Firm Name <span className="text-destructive">*</span>
+                    {t('company.name', 'Company Name')} <span className="text-destructive">*</span>
                   </label>
                   <Input
                     name="name"
@@ -183,13 +234,14 @@ export function CompanyProfileView() {
                     placeholder="Krishna Tent & Events"
                     className="font-medium rounded-xl text-base"
                     required
+                    disabled={!isEditing}
                   />
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="text-xs font-bold text-foreground uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                      <Mail size={14} className="text-muted-foreground" /> Email Address
+                      <Mail size={14} className="text-muted-foreground" /> {t('company.email', 'Email Address')}
                     </label>
                     <Input
                       name="email"
@@ -198,11 +250,12 @@ export function CompanyProfileView() {
                       onChange={handleChange}
                       placeholder="admin@krishnatent.com"
                       className="rounded-xl"
+                      disabled={!isEditing}
                     />
                   </div>
                   <div>
                     <label className="text-xs font-bold text-foreground uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                      <Phone size={14} className="text-muted-foreground" /> Phone / Contact Number
+                      <Phone size={14} className="text-muted-foreground" /> {t('company.phone', 'Phone Number')}
                     </label>
                     <Input
                       name="phone"
@@ -210,6 +263,7 @@ export function CompanyProfileView() {
                       onChange={handleChange}
                       placeholder="+91 98290 12345"
                       className="rounded-xl"
+                      disabled={!isEditing}
                     />
                   </div>
                 </div>
@@ -221,11 +275,11 @@ export function CompanyProfileView() {
           <div className="space-y-4 pt-2">
             <h2 className="text-sm font-bold text-foreground uppercase tracking-wider flex items-center gap-2 border-b border-border/40 pb-2">
               <MapPin size={18} className="text-[#8a5a32]" />
-              Business Head Office Address
+              {t('company.address', 'Postal Address')}
             </h2>
             <div>
               <label className="text-xs font-bold text-foreground uppercase tracking-wider mb-1.5 block">
-                Full Business Address
+                {t('company.address', 'Postal Address')}
               </label>
               <textarea
                 name="address"
@@ -233,7 +287,8 @@ export function CompanyProfileView() {
                 value={formData.address || ''}
                 onChange={handleChange}
                 placeholder="Tonk Road, Near Sanganer Flyover, Jaipur, Rajasthan 302018"
-                className="w-full rounded-xl border border-input bg-background px-3.5 py-2.5 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring font-medium"
+                className="w-full rounded-xl border border-input bg-background px-3.5 py-2.5 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring font-medium disabled:opacity-50"
+                disabled={!isEditing}
               />
             </div>
           </div>
@@ -242,12 +297,12 @@ export function CompanyProfileView() {
           <div className="space-y-4 pt-2">
             <h2 className="text-sm font-bold text-foreground uppercase tracking-wider flex items-center gap-2 border-b border-border/40 pb-2">
               <ShieldCheck size={18} className="text-[#8a5a32]" />
-              Taxation & Legal Information
+              {t('company.taxation', 'Taxation & Legal Information')}
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="text-xs font-bold text-foreground uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                  <FileText size={14} className="text-muted-foreground" /> GSTIN Registration Number
+                  <FileText size={14} className="text-muted-foreground" /> {t('company.gstin', 'GSTIN Registration Number')}
                 </label>
                 <Input
                   name="gstin"
@@ -255,6 +310,7 @@ export function CompanyProfileView() {
                   onChange={handleChange}
                   placeholder="08AAAAA0000A1Z5"
                   className="rounded-xl uppercase font-mono tracking-wide"
+                  disabled={!isEditing}
                 />
               </div>
             </div>

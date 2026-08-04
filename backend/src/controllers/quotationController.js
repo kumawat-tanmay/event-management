@@ -93,7 +93,7 @@ const getQuotationById = async (req, res) => {
     const quotation = await Quotation.findOne({ _id: req.params.id, isDeleted: false })
       .populate('customer', 'name phone email address type gstNumber')
       .populate('lead', 'leadId customerName eventType')
-      .populate('items.item', 'name code unit rentalPrice image')
+      .populate('items.item', 'name code unit image')
       .populate('createdBy', 'name')
       .lean();
 
@@ -239,7 +239,7 @@ const checkStock = async (req, res) => {
         : 'Some items have insufficient stock'
     });
   } catch (error) {
-    console.error('Error checking stock:', error);
+    console.error('Error checking stock:', error.stack, req.body);
     res.status(500).json({ success: false, message: 'Server Error' });
   }
 };

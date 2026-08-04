@@ -342,13 +342,13 @@ export function DispatchForm({ dispatchId }: DispatchFormProps = {}) {
                         <td className="p-4 text-center font-black text-sm">{item.requestedQty}</td>
                         <td className="p-4 text-center">
                           <input
-                            type="number"
-                            min="1"
-                            max={item.requestedQty}
-                            value={item.dispatchedQty}
+                            type="text"
+                            value={item.dispatchedQty === 0 ? '' : item.dispatchedQty}
                             onChange={e => {
-                              const val = Number(e.target.value);
-                              setDispatchItems(dispatchItems.map((di, i) => (i === idx ? { ...di, dispatchedQty: val } : di)));
+                              let val = e.target.value.replace(/[^0-9]/g, '');
+                              let num = val === '' ? 0 : Number(val);
+                              if (num > item.requestedQty) num = item.requestedQty;
+                              setDispatchItems(dispatchItems.map((di, i) => (i === idx ? { ...di, dispatchedQty: num } : di)));
                             }}
                             disabled={isEditMode && dispatchStatus !== 'Loading'}
                             className="w-20 px-2 py-1.5 border border-border focus:border-primary text-center rounded-md font-bold text-sm bg-background transition-colors outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-60"

@@ -56,6 +56,10 @@ const inventoryLedgerSchema = new mongoose.Schema({
   remarks: {
     type: String
   },
+  unitCost: {
+    type: Number,
+    default: 0
+  },
   performedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',

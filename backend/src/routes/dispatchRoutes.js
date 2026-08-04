@@ -27,7 +27,7 @@ const dispatchSchema = {
 
 router.use(protect);
 
-const opsRoles = ['Owner', 'Admin', 'Store Manager', 'Manager'];
+const opsRoles = ['Owner', 'Admin', 'Manager'];
 
 router.get('/', authorize(...opsRoles, 'Supervisor', 'Driver'), dispatchController.getDispatches);
 router.get('/:id', authorize(...opsRoles, 'Supervisor', 'Driver'), dispatchController.getDispatchById);

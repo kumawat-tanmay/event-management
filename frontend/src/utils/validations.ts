@@ -95,11 +95,6 @@ export const getWarehouseSchema = (t: any) => z.object({
     .string()
     .max(20, t('validation.phoneMaxLimit', 'Phone number must be less than 20 characters'))
     .optional(),
-  capacity: z
-    .number({ message: t('validation.capacityNumber', 'Capacity must be a number') })
-    .min(1, t('validation.capacityMin', 'Capacity must be at least 1 unit'))
-    .max(1000000, t('validation.capacityMax', 'Capacity cannot exceed 1,000,000 units'))
-    .optional(),
   isDefault: z.boolean().default(false),
 });
 
@@ -116,8 +111,7 @@ export const getItemSchema = (t: any) => z.object({
   description: z.string()
     .max(1000, t('validation.itemDescriptionMax', 'Description must be less than 1000 characters'))
     .optional(),
-  unit: z.enum(['Pieces','Sets','SqFt','Meters','Kg','Rolls','Bundles','Pairs','Boxes'])
-    .default('Pieces'),
+  unit: z.string().default('Pieces'),
   rentalPrice: z.number({ message: t('validation.rentalPriceNumber', 'Rental price must be a number') })
     .min(0, t('validation.rentalPriceMin', 'Rental price cannot be negative'))
     .default(0),
@@ -128,6 +122,15 @@ export const getItemSchema = (t: any) => z.object({
     .min(0, t('validation.minStockAlertMin', 'Minimum stock cannot be negative'))
     .default(0),
   isActive: z.boolean().default(true),
+  warehouseStock: z.array(z.object({
+    warehouse: z.string(),
+    zoneId: z.string().optional().nullable(),
+    rackId: z.string().optional().nullable(),
+    zoneName: z.string().optional().nullable(),
+    rackName: z.string().optional().nullable(),
+    quantity: z.number().min(0),
+    unitCost: z.number().min(0).optional()
+  })).optional()
 });
 
 // ─── CRM Customer Schema Builder ─────────────────────────────────────────────
@@ -263,5 +266,13 @@ export const getVehicleSchema = (t: any) => z.object({
   status: z.enum(['available', 'on_dispatch', 'maintenance']),
   ownership: z.enum(['company', 'rented']),
 });
+
+/**
+ * Utility to restrict input value to only digits 0-9.
+ * Returns a clean numeric string.
+ */
+export const sanitizeNumberInput = (val: string): string => {
+  return val.replace(/[^0-9]/g, '');
+};
 
 

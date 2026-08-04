@@ -489,10 +489,10 @@ export function BookingForm({ isEdit = false }: BookingFormProps) {
                   <Input
                     label={getBilingualText('operationForm.transportLabel')}
                     placeholder={getBilingualText('operationForm.transportLabel')}
-                    type="number"
-                    value={transportCharges}
+                    type="text"
+                    value={transportCharges === 0 ? '' : transportCharges}
                     onChange={(e) => {
-                      const val = e.target.value;
+                      const val = e.target.value.replace(/[^0-9]/g, '');
                       setTransportCharges(val === '' ? 0 : Number(val));
                     }}
                     className="text-right font-semibold text-foreground"
@@ -501,10 +501,10 @@ export function BookingForm({ isEdit = false }: BookingFormProps) {
                   <Input
                     label={getBilingualText('operationForm.labourLabel')}
                     placeholder={getBilingualText('operationForm.labourLabel')}
-                    type="number"
-                    value={labourCharges}
+                    type="text"
+                    value={labourCharges === 0 ? '' : labourCharges}
                     onChange={(e) => {
-                      const val = e.target.value;
+                      const val = e.target.value.replace(/[^0-9]/g, '');
                       setLabourCharges(val === '' ? 0 : Number(val));
                     }}
                     className="text-right font-semibold text-foreground"
@@ -517,9 +517,13 @@ export function BookingForm({ isEdit = false }: BookingFormProps) {
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium text-muted-foreground">{getBilingualText('operationForm.discountLabel')}</span>
                   <Input
-                    type="number"
-                    value={discount}
-                    onChange={(e) => setDiscount(Number(e.target.value))}
+                    type="text"
+                    value={discount === 0 ? '' : discount}
+                    onChange={(e) => {
+                      let val = e.target.value.replace(/[^0-9]/g, '');
+                      if (Number(val) > 100) val = '100';
+                      setDiscount(val === '' ? 0 : Number(val));
+                    }}
                     className="h-8 w-20 text-right font-semibold"
                     max="100"
                   />
@@ -571,9 +575,12 @@ export function BookingForm({ isEdit = false }: BookingFormProps) {
                   <div className="relative">
                     <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <input
-                      type="number"
-                      value={advanceRequired}
-                      onChange={(e) => setAdvanceRequired(Number(e.target.value))}
+                      type="text"
+                      value={advanceRequired === 0 ? '' : advanceRequired}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/[^0-9]/g, '');
+                        setAdvanceRequired(val === '' ? 0 : Number(val));
+                      }}
                       className="w-full pl-9 pr-4 py-2 bg-background border border-border rounded-lg text-sm text-right font-bold text-foreground focus:outline-none"
                     />
                   </div>
@@ -584,9 +591,12 @@ export function BookingForm({ isEdit = false }: BookingFormProps) {
                   <div className="relative">
                     <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <input
-                      type="number"
-                      value={advancePaid}
-                      onChange={(e) => setAdvancePaid(Number(e.target.value))}
+                      type="text"
+                      value={advancePaid === 0 ? '' : advancePaid}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/[^0-9]/g, '');
+                        setAdvancePaid(val === '' ? 0 : Number(val));
+                      }}
                       className="w-full pl-9 pr-4 py-2 bg-background border border-border rounded-lg text-sm text-right font-bold text-emerald-600 focus:outline-none"
                     />
                   </div>

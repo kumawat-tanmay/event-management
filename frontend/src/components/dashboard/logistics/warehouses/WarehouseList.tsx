@@ -45,10 +45,10 @@ export default function WarehouseList({ warehouses, selectedId, onSelect }: Ware
           </div>
 
           <div className="flex flex-col gap-1 pl-6">
-            {warehouse.location && (
+            {warehouse.address && (
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <MapPin className="w-3 h-3 shrink-0" />
-                <span className="truncate">{warehouse.location}</span>
+                <span className="truncate">{warehouse.address}</span>
               </div>
             )}
 

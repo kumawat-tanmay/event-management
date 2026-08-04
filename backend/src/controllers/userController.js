@@ -10,7 +10,7 @@ const { getInviteEmailTemplate } = require('../utils/emailTemplates');
 const getUsers = async (req, res) => {
   try {
     const users = await User.find({ isDeleted: false })
-      .select('name email role status isActive createdAt invitedBy')
+      .select('name email role status isActive createdAt invitedBy phone address dob gender description')
       .populate('invitedBy', 'name email')
       .sort({ createdAt: -1 })
       .lean();
@@ -132,7 +132,132 @@ const inviteUser = async (req, res) => {
   }
 };
 
+// @desc    Get user by ID
+// @route   GET /api/users/:id
+// @access  Private (users.view)
+const getUserById = async (req, res) => {
+  try {
+    const user = await User.findOne({ _id: req.params.id, isDeleted: false })
+      .select('-password')
+      .populate('invitedBy', 'name email')
+      .lean();
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    res.json({ success: true, data: user });
+  } catch (error) {
+    console.error('Error fetching user by ID:', error);
+    res.status(500).json({ success: false, message: 'Server Error' });
+  }
+};
+
+// @desc    Update user
+// @route   PUT /api/users/:id
+// @access  Private (users.update)
+const updateUser = async (req, res) => {
+  const { name, role, isActive, status, phone, address, dob, gender, description } = req.body;
+
+  try {
+    const user = await User.findOne({ _id: req.params.id, isDeleted: false });
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    if (name) user.name = name;
+    if (isActive !== undefined) user.isActive = isActive;
+    if (status) user.status = status;
+    if (phone !== undefined) user.phone = phone;
+    if (address !== undefined) user.address = address;
+    if (dob !== undefined) user.dob = dob || null;
+    if (gender !== undefined) user.gender = gender;
+    if (description !== undefined) user.description = description;
+
+    if (role && role !== user.role) {
+      const assignedRole = await Role.findOne({ name: role, isDeleted: false });
+      if (!assignedRole) {
+        return res.status(404).json({ success: false, message: 'Role not found' });
+      }
+
+      // Security check: Only Owner can assign Owner role
+      if (assignedRole.name === 'Owner' && req.user.role !== 'Owner') {
+        return res.status(403).json({ success: false, message: 'Only an Owner can assign the Owner role' });
+      }
+
+      if (assignedRole.permissions.includes('*') && !req.user.permissions?.includes('*')) {
+        return res.status(403).json({ success: false, message: 'You do not have permission to assign wildcard roles' });
+      }
+
+      user.role = assignedRole.name;
+      user.permissions = assignedRole.permissions;
+    }
+
+    const updatedUser = await user.save();
+
+    // Sync corresponding Staff record if exists
+    try {
+      const Staff = require('../models/Staff');
+      const staff = await Staff.findOne({ email: user.email, isDeleted: false });
+      if (staff) {
+        if (name) staff.name = name;
+        if (phone) staff.phone = phone;
+        if (role) staff.role = role;
+        await staff.save();
+      }
+    } catch (staffErr) {
+      console.error('Failed to sync Staff record on user update:', staffErr);
+    }
+
+    res.json({ success: true, data: updatedUser, message: 'User updated successfully' });
+  } catch (error) {
+    console.error('Error updating user:', error);
+    res.status(500).json({ success: false, message: 'Server Error' });
+  }
+};
+
+// @desc    Delete user (Soft delete)
+// @route   DELETE /api/users/:id
+// @access  Private (users.update)
+const deleteUser = async (req, res) => {
+  try {
+    const user = await User.findOne({ _id: req.params.id, isDeleted: false });
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    // Prevent deleting oneself
+    if (user._id.toString() === req.user._id.toString()) {
+      return res.status(400).json({ success: false, message: 'You cannot delete your own account' });
+    }
+
+    // Soft delete
+    user.isDeleted = true;
+    await user.save();
+
+    // Soft delete corresponding Staff record if exists
+    try {
+      const Staff = require('../models/Staff');
+      const staff = await Staff.findOne({ email: user.email, isDeleted: false });
+      if (staff) {
+        staff.isDeleted = true;
+        await staff.save();
+      }
+    } catch (staffErr) {
+      console.error('Failed to soft delete Staff record on user delete:', staffErr);
+    }
+
+    res.json({ success: true, message: 'User deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    res.status(500).json({ success: false, message: 'Server Error' });
+  }
+};
+
 module.exports = {
   getUsers,
-  inviteUser
+  inviteUser,
+  getUserById,
+  updateUser,
+  deleteUser
 };

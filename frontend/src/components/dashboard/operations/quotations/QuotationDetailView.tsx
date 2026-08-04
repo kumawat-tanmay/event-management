@@ -4,12 +4,14 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Printer, Download, Edit, CheckCircle, FileText, Calendar, MapPin, Phone, Mail, Tag } from 'lucide-react';
+import { ArrowLeft, Printer, Download, Edit, CheckCircle, FileText, Calendar, MapPin, Phone, Mail, Tag, MessageSquare } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { quotationService, Quotation } from '@/lib/services/quotation.services';
 import { ActionGuard } from '@/components/auth/ActionGuard';
+import { generatePdfFromHtml, sharePdfViaWhatsApp } from '@/utils/pdfShare';
+import { getQuotationPdfHtml } from '@/utils/pdfTemplates';
 
 export function QuotationDetailView() {
   const { t } = useTranslation();
@@ -49,334 +51,49 @@ export function QuotationDetailView() {
     const printWindow = window.open('', '_blank', 'width=950,height=800');
     if (!printWindow) return;
 
-    const start = new Date(qtn.eventStartDate);
-    const end = new Date(qtn.eventEndDate);
-    const durationDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    const content = getQuotationPdfHtml(qtn);
+    
+    // Add print trigger script for standard printing
+    const contentWithScript = content.replace('</body>', `
+      <script>
+        window.onload = function() {
+          window.print();
+          setTimeout(function() { window.close(); }, 500);
+        };
+      </script>
+      </body>
+    `);
 
-    const itemsTotal = qtn.subtotal || 0;
-    const transport = qtn.transportCharges || 0;
-    const labour = qtn.labourCharges || 0;
-    const combinedSubtotal = (qtn.subtotal || 0) + transport + labour;
-    const discountAmt = (combinedSubtotal * (qtn.discount || 0)) / 100;
-    const taxable = combinedSubtotal - discountAmt;
-
-    const itemsRows = qtn.items.map((item, idx) => {
-      const itemObj = typeof item.item === 'object' ? item.item : null;
-      const name = item.itemName || (itemObj as any)?.name || 'Unknown Item';
-      const code = item.itemCode || (itemObj as any)?.code || '—';
-      const qty = item.quantity || 0;
-
-      return `
-        <tr>
-          <td style="text-align: center; padding: 9px 8px; border-bottom: 1px solid #e2e8f0; font-size: 12px; color: #475569;">${idx + 1}</td>
-          <td style="padding: 9px 12px; border-bottom: 1px solid #e2e8f0; font-size: 12px;">
-            <strong style="color: #0f172a; display: block;">${name}</strong>
-            <span style="font-size: 10px; color: #64748b; font-family: monospace;">Code: ${code}</span>
-          </td>
-          <td style="text-align: center; padding: 9px 12px; border-bottom: 1px solid #e2e8f0; font-size: 12px; font-weight: 700; color: #0f172a;">${qty} ${item.unit || 'pc'}</td>
-        </tr>
-      `;
-    }).join('');
-
-    const content = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8" />
-          <title>Quotation #${qtn.quotationId} - Krishna Tent & Events</title>
-          <style>
-            @page {
-              size: A4 portrait;
-              margin: 12mm 15mm;
-            }
-            * { box-sizing: border-box; }
-            body {
-              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-              color: #0f172a;
-              background: #fff;
-              margin: 0;
-              padding: 0;
-              font-size: 12px;
-              line-height: 1.5;
-            }
-            .a4-container {
-              width: 100%;
-              max-width: 210mm;
-              margin: 0 auto;
-            }
-            .brand-header {
-              display: flex;
-              justify-content: space-between;
-              align-items: flex-start;
-              border-bottom: 2px solid #0f172a;
-              padding-bottom: 16px;
-              margin-bottom: 20px;
-            }
-            .company-name {
-              font-size: 26px;
-              font-weight: 900;
-              letter-spacing: -0.5px;
-              color: #0f172a;
-              margin: 0 0 4px 0;
-              text-transform: uppercase;
-            }
-            .company-info {
-              font-size: 11px;
-              color: #475569;
-              margin-top: 2px;
-            }
-            .doc-badge {
-              text-align: right;
-            }
-            .doc-title {
-              font-size: 22px;
-              font-weight: 900;
-              color: #ea580c;
-              margin: 0;
-              letter-spacing: 0.5px;
-            }
-            .qtn-no {
-              font-size: 14px;
-              font-weight: 800;
-              font-family: monospace;
-              color: #0f172a;
-              margin-top: 4px;
-            }
-            .info-grid {
-              display: flex;
-              gap: 16px;
-              margin-bottom: 20px;
-            }
-            .info-card {
-              flex: 1;
-              background: #f8fafc;
-              border: 1px solid #e2e8f0;
-              border-radius: 8px;
-              padding: 12px 14px;
-            }
-            .info-card-title {
-              font-size: 10px;
-              font-weight: 800;
-              text-transform: uppercase;
-              letter-spacing: 0.5px;
-              color: #64748b;
-              margin-bottom: 6px;
-              border-bottom: 1px solid #cbd5e1;
-              padding-bottom: 4px;
-            }
-            .info-card-text {
-              font-size: 12px;
-              color: #1e293b;
-              margin: 3px 0;
-            }
-            .items-table {
-              width: 100%;
-              border-collapse: collapse;
-              margin-bottom: 20px;
-              border: 1px solid #e2e8f0;
-              border-radius: 6px;
-              overflow: hidden;
-            }
-            .items-table th {
-              background: #0f172a;
-              color: #ffffff;
-              font-size: 10px;
-              font-weight: 800;
-              text-transform: uppercase;
-              letter-spacing: 0.5px;
-              padding: 9px 12px;
-            }
-            .financial-section {
-              display: flex;
-              justify-content: space-between;
-              align-items: flex-start;
-              gap: 20px;
-              margin-top: 15px;
-            }
-            .terms-box {
-              flex: 1.2;
-              background: #f8fafc;
-              border: 1px solid #e2e8f0;
-              border-radius: 8px;
-              padding: 12px;
-            }
-            .terms-title {
-              font-size: 11px;
-              font-weight: 800;
-              text-transform: uppercase;
-              color: #0f172a;
-              margin-bottom: 6px;
-            }
-            .terms-list {
-              margin: 0;
-              padding-left: 16px;
-              color: #475569;
-              font-size: 10.5px;
-            }
-            .terms-list li { margin-bottom: 4px; }
-            .ledger-box {
-              width: 280px;
-              border: 1px solid #e2e8f0;
-              border-radius: 8px;
-              overflow: hidden;
-              background: #ffffff;
-            }
-            .ledger-row {
-              display: flex;
-              justify-content: space-between;
-              padding: 6px 12px;
-              font-size: 11.5px;
-              color: #334155;
-              border-bottom: 1px solid #f1f5f9;
-            }
-            .ledger-row.subtotal {
-              font-weight: 700;
-              color: #0f172a;
-              background: #f8fafc;
-            }
-            .ledger-row.grand-total {
-              font-size: 14px;
-              font-weight: 900;
-              color: #0f172a;
-              background: #ffedd5;
-              border-top: 2px solid #ea580c;
-              padding: 10px 12px;
-            }
-            .signature-container {
-              display: flex;
-              justify-content: space-between;
-              margin-top: 50px;
-              padding-top: 15px;
-            }
-            .sig-block {
-              width: 200px;
-              text-align: center;
-              border-top: 1.5px dashed #64748b;
-              padding-top: 6px;
-              font-size: 11px;
-              font-weight: 700;
-              color: #334155;
-            }
-          </style>
-        </head>
-        <body>
-          <div class="a4-container">
-            <div class="brand-header">
-              <div>
-                <h1 class="company-name">KRISHNA TENT & EVENTS</h1>
-                <div class="company-info">123 Industrial Area, Jaipur, Rajasthan | Phone: +91 98290 12345</div>
-                <div class="company-info">GSTIN: 08AABCD1234E1Z5 | Email: info@krishnaevents.com</div>
-              </div>
-              <div class="doc-badge">
-                <h2 class="doc-title">QUOTATION</h2>
-                <div class="qtn-no"># ${qtn.quotationId}</div>
-                <div style="font-size: 11px; color: #64748b; margin-top: 2px;">
-                  Date: <strong>${new Date(qtn.createdAt || Date.now()).toLocaleDateString()}</strong>
-                </div>
-                ${qtn.validUntil ? `<div style="font-size: 11px; color: #64748b;">Valid Until: <strong>${new Date(qtn.validUntil).toLocaleDateString()}</strong></div>` : ''}
-              </div>
-            </div>
-
-            <div class="info-grid">
-              <div class="info-card">
-                <div class="info-card-title">CUSTOMER DETAILS</div>
-                <div class="info-card-text"><strong>${qtn.customer?.name || '—'}</strong></div>
-                <div class="info-card-text">Phone: ${qtn.customer?.phone || '—'}</div>
-                ${qtn.customer?.email ? `<div class="info-card-text">Email: ${qtn.customer.email}</div>` : ''}
-                ${qtn.customer?.address ? `<div class="info-card-text">Address: ${qtn.customer.address}</div>` : ''}
-              </div>
-
-              <div class="info-card">
-                <div class="info-card-title">EVENT & VENUE SPECS</div>
-                <div class="info-card-text">Title: <strong>${qtn.eventTitle}</strong></div>
-                <div class="info-card-text">Event Type: ${qtn.eventType}</div>
-                <div class="info-card-text">Duration: ${new Date(qtn.eventStartDate).toLocaleDateString()} to ${new Date(qtn.eventEndDate).toLocaleDateString()} (${durationDays} Days)</div>
-                <div class="info-card-text">Venue: ${qtn.venueAddress}</div>
-              </div>
-            </div>
-
-            <table class="items-table">
-              <thead>
-                <tr>
-                  <th style="width: 40px; text-align: center;">#</th>
-                  <th style="text-align: left;">Item Description</th>
-                  <th style="width: 100px; text-align: center;">Qty</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${itemsRows}
-              </tbody>
-            </table>
-
-            <div class="financial-section">
-              <div class="terms-box">
-                <div class="terms-title">TERMS & CONDITIONS</div>
-                <ol class="terms-list">
-                  <li>50% advance payment required to confirm booking and lock items.</li>
-                  <li>Any loss or damage to rental inventory will be billed at replacement cost.</li>
-                  <li>Transport and labour charges are estimates subject to site conditions.</li>
-                  <li>This quotation is valid for 5 days from the date of issue.</li>
-                </ol>
-              </div>
-
-              <div class="ledger-box">
-                ${itemsTotal > 0 ? `
-                  <div class="ledger-row">
-                    <span>Materials Total:</span>
-                    <span>₹ ${itemsTotal.toLocaleString()}</span>
-                  </div>
-                ` : ''}
-                <div class="ledger-row">
-                  <span>Transport / Car Cost:</span>
-                  <span>₹ ${transport.toLocaleString()}</span>
-                </div>
-                <div class="ledger-row">
-                  <span>Tent Cost:</span>
-                  <span>₹ ${labour.toLocaleString()}</span>
-                </div>
-                <div class="ledger-row subtotal">
-                  <span>Subtotal:</span>
-                  <span>₹ ${combinedSubtotal.toLocaleString()}</span>
-                </div>
-                ${qtn.discount > 0 ? `
-                  <div class="ledger-row" style="color: #16a34a;">
-                    <span>Discount (${qtn.discount}%):</span>
-                    <span>- ₹ ${discountAmt.toLocaleString()}</span>
-                  </div>
-                ` : ''}
-                <div class="ledger-row">
-                  <span>Taxable Amount:</span>
-                  <span>₹ ${taxable.toLocaleString()}</span>
-                </div>
-                <div class="ledger-row">
-                  <span>GST (${qtn.taxRate || 0}%):</span>
-                  <span>₹ ${(qtn.taxAmount || 0).toLocaleString()}</span>
-                </div>
-                <div class="ledger-row grand-total">
-                  <span>GRAND TOTAL:</span>
-                  <span>₹ ${(qtn.grandTotal || 0).toLocaleString()}</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="signature-container">
-              <div class="sig-block">Customer Acceptance Signature</div>
-              <div class="sig-block">Authorized Signatory (Krishna Events)</div>
-            </div>
-          </div>
-
-          <script>
-            window.onload = function() {
-              window.print();
-              setTimeout(function() { window.close(); }, 500);
-            };
-          </script>
-        </body>
-      </html>
-    `;
-
-    printWindow.document.write(content);
+    printWindow.document.write(contentWithScript);
     printWindow.document.close();
+  };
+
+  const handleSendWhatsApp = async (qtn: Quotation) => {
+    const htmlContent = getQuotationPdfHtml(qtn);
+    const filename = `Quotation_${qtn.quotationId}.pdf`;
+    const customerPhone = qtn.customer?.phone || '';
+    
+    const message = `🏕️ *Krishna Tent & Events*
+
+Dear ${qtn.customer?.name || 'Customer'},
+
+Please find attached your *Quotation #${qtn.quotationId}* for the event:
+📋 *${qtn.eventTitle}*
+📅 ${new Date(qtn.eventStartDate).toLocaleDateString()} to ${new Date(qtn.eventEndDate).toLocaleDateString()}
+📍 ${qtn.venueAddress}
+💰 Grand Total: ₹${(qtn.grandTotal || 0).toLocaleString()}
+
+This quotation is valid for 5 days. Please review and confirm.
+
+Thank you!
+📞 +91 98290 12345`;
+
+    const blob = await generatePdfFromHtml(htmlContent, filename);
+    if (blob) {
+      await sharePdfViaWhatsApp(blob, filename, customerPhone, message);
+    } else {
+      alert("Failed to generate PDF");
+    }
   };
 
   if (loading) return <div className="p-8 text-center text-muted-foreground animate-pulse">{t('crm.loading', 'Loading...')}</div>;
@@ -435,6 +152,15 @@ export function QuotationDetailView() {
               {t('quotation.editQuotation', 'Edit')}
             </Button>
           </ActionGuard>
+
+          <Button 
+            variant="outline" 
+            className="flex items-center gap-2 text-emerald-600 border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700"
+            onClick={() => handleSendWhatsApp(quotation)}
+          >
+            <MessageSquare className="w-4 h-4" />
+            Send to WhatsApp
+          </Button>
 
           <Button 
             variant="outline" 

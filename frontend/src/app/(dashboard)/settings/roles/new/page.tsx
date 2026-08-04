@@ -1,1 +1,9 @@
-export default function Placeholder() { return <div className='p-8 flex items-center justify-center h-screen text-muted-foreground'>Coming Soon...</div>; }
+import { RoleFormView } from '@/components/dashboard/settings/RoleFormView';
+
+export const metadata = {
+  title: 'Create Custom Role - ERP Settings',
+};
+
+export default function NewRolePage() {
+  return <RoleFormView />;
+}

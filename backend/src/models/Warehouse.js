@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 // Sub-schema for individual shelves/areas inside a zone
 const rackSchema = new mongoose.Schema({
   name: { type: String, required: true },       // e.g., "Rack 1A", "Floor Area B"
-  capacity: { type: String, default: '500' },    // e.g., "500 units"
+  capacity: String,
   description: String
 });
 
@@ -30,7 +30,6 @@ const warehouseSchema = new mongoose.Schema({
   location: { type: String, trim: true },
   address: { type: String, trim: true },
   phone: { type: String, trim: true },
-  capacity: { type: Number, default: 5000 },
   managerId: { 
     type: mongoose.Schema.Types.ObjectId, 
     ref: 'User'

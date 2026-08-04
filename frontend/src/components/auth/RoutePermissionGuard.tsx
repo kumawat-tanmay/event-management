@@ -11,7 +11,7 @@ import RoleGuard from '@/components/auth/RoleGuard';
  */
 const routePrefixes = [
   // Calendar
-  { prefix: '/calendar', permission: 'operations.view' },
+  { prefix: '/calendar', permission: 'calendar.view' },
 
   // CRM & Parties
   { prefix: '/crm/customers', permission: 'crm.view' },

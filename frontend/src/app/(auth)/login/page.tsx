@@ -2,13 +2,11 @@ import React from 'react';
 import { Metadata } from 'next';
 import AuthSplitLayout from '@/components/auth/AuthSplitLayout';
 import LoginForm from '@/components/auth/LoginForm';
-import { buildMetadata } from '@/utils/seoConfig';
 
-export const metadata: Metadata = buildMetadata({
-  title: 'Sign In',
-  description: 'Sign in to access your Krishna Tent & Events ERP dashboard and manage event bookings, inventory, and finances.',
-  url: '/login',
-});
+export const metadata: Metadata = {
+  title: 'Login - Krishna Tent & Events ERP',
+  description: 'Sign in to access your Krishna Tent & Events ERP dashboard.',
+};
 
 export default function LoginPage() {
   return (

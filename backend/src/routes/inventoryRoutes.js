@@ -10,7 +10,6 @@ const {
   deleteItem,
   // Opening Stock
   addOpeningStock,
-  adjustStock,
   // Ledger
   getLedger
 } = require('../controllers/inventoryController');
@@ -33,7 +32,6 @@ router.delete('/items/:id', requirePermission('inventory.delete'), deleteItem);
 
 // Opening Stock & Adjustments
 router.post('/items/:id/opening-stock', requirePermission('inventory.create'), addOpeningStock);
-router.post('/items/:id/adjust-stock', requirePermission('inventory.update'), adjustStock);
 
 // Ledger
 router.get('/ledger', requirePermission('inventory.view'), getLedger);

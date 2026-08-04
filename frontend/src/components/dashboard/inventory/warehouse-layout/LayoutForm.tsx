@@ -271,7 +271,6 @@ export default function LayoutForm({ id }: LayoutFormProps) {
     setHasChanges(true);
   };
 
-  // Update Rack details locally
   const handleUpdateRack = (zoneIndex: number, rackIndex: number, field: 'name' | 'capacity', value: string) => {
     setLocalZones(prev => {
       const updated = [...prev];
@@ -319,7 +318,6 @@ export default function LayoutForm({ id }: LayoutFormProps) {
     try {
       const payload = {
         name: warehouse.name,
-        location: warehouse.location,
         isActive: warehouse.isActive,
         zones: localZones,
         managerId: warehouse.managerId ? (warehouse.managerId as any)._id || warehouse.managerId : undefined,
@@ -389,7 +387,7 @@ export default function LayoutForm({ id }: LayoutFormProps) {
                 {warehouse.code || 'NO-CODE'}
               </span>
               <span className="text-xs text-muted-foreground font-semibold flex items-center gap-1">
-                <Building2 className="w-3.5 h-3.5" /> {warehouse.location}
+                <Building2 className="w-3.5 h-3.5" /> {warehouse.address}
               </span>
             </div>
             <h1 className="text-2xl font-bold text-foreground mt-0.5">

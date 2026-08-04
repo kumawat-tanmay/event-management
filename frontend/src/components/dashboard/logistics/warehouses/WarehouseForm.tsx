@@ -20,10 +20,8 @@ export default function WarehouseForm({ isOpen, onClose, onSuccess, initialData 
   const { t } = useTranslation();
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
-  const [location, setLocation] = useState('');
   const [address, setAddress] = useState('');
   const [phone, setPhone] = useState('');
-  const [capacity, setCapacity] = useState('');
   const [managerId, setManagerId] = useState('');
   const [isActive, setIsActive] = useState(true);
   const [isDefault, setIsDefault] = useState(false);
@@ -40,20 +38,16 @@ export default function WarehouseForm({ isOpen, onClose, onSuccess, initialData 
     if (initialData) {
       setName(initialData.name);
       setCode(initialData.code || '');
-      setLocation(initialData.location || '');
       setAddress(initialData.address || '');
       setPhone(initialData.phone || '');
-      setCapacity(initialData.capacity?.toString() || '');
-      setManagerId(initialData.managerId?._id || '');
+      setManagerId(typeof initialData.managerId === 'object' ? initialData.managerId?._id : (initialData.managerId || ''));
       setIsActive(initialData.isActive);
       setIsDefault(initialData.isDefault || false);
     } else {
       setName('');
       setCode('');
-      setLocation('');
       setAddress('');
       setPhone('');
-      setCapacity('');
       setManagerId('');
       setIsActive(true);
       setIsDefault(false);
@@ -62,14 +56,13 @@ export default function WarehouseForm({ isOpen, onClose, onSuccess, initialData 
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Zod v4 validation check
     const validationResult = getWarehouseSchema(t).safeParse({
       name: name.trim(),
       code: name.trim().length >= 2 ? name.trim().slice(0, 4).toUpperCase() : 'WH-01',
-      address: location.trim(),
+      address: address.trim(),
       phone: '',
-      capacity: 5000,
       isDefault: false,
     });
 
@@ -83,10 +76,8 @@ export default function WarehouseForm({ isOpen, onClose, onSuccess, initialData 
       const payload: WarehouseInput = {
         name: validationResult.data.name,
         code: code || undefined,
-        location,
         address,
         phone,
-        capacity: capacity ? Number(capacity) : undefined,
         managerId: managerId || null,
         isActive,
         isDefault,
@@ -115,7 +106,7 @@ export default function WarehouseForm({ isOpen, onClose, onSuccess, initialData 
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
       <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={onClose} />
       <div className="relative bg-card w-full max-w-2xl max-h-[90vh] rounded-2xl shadow-xl border border-border flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-        
+
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-border">
           <h3 className="text-xl font-bold font-display">{initialData ? t('warehouse.editWarehouse') : t('warehouse.addGodown')}</h3>
@@ -127,7 +118,7 @@ export default function WarehouseForm({ isOpen, onClose, onSuccess, initialData 
         {/* Body */}
         <div className="p-6 overflow-y-auto flex-1">
           <form id="warehouse-form" onSubmit={handleSave} className="space-y-6">
-            
+
             {/* Basic Info */}
             <div className="space-y-4">
               <h4 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">{t('roles.type', 'Basic Information')}</h4>
@@ -140,10 +131,7 @@ export default function WarehouseForm({ isOpen, onClose, onSuccess, initialData 
                   <label className="text-sm font-medium text-foreground">{t('warehouse.code', 'Warehouse Code')} <span className="text-muted-foreground text-xs font-normal">({t('common.optional', 'Optional')})</span></label>
                   <Input value={code} onChange={(e) => setCode(e.target.value)} placeholder={t('common.codePlace', 'Auto-generates if left blank')} />
                 </div>
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-foreground">{t('warehouse.location')}</label>
-                  <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder={t('warehouse.locationPlace', 'e.g. Plot 45, Industrial Area')} />
-                </div>
+
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium text-foreground">{t('warehouse.address', 'Full Address')}</label>
                   <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder={t('warehouse.addressPlace', 'Complete address')} />
@@ -153,13 +141,9 @@ export default function WarehouseForm({ isOpen, onClose, onSuccess, initialData 
                   <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder={t('warehouse.phonePlace', '+91 9876543210')} />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-foreground">{t('warehouse.capacity', 'Total Capacity')} <span className="text-muted-foreground text-xs font-normal">({t('common.optional', 'Optional')})</span></label>
-                  <Input type="number" value={capacity} onChange={(e) => setCapacity(e.target.value)} placeholder={t('warehouse.capacityPlace', 'e.g. 5000 units')} />
-                </div>
-                <div className="space-y-1.5">
                   <label className="text-sm font-medium text-foreground">{t('warehouse.manager')}</label>
-                  <select 
-                    value={managerId} 
+                  <select
+                    value={managerId}
                     onChange={(e) => setManagerId(e.target.value)}
                     className="w-full h-10 px-3 py-2 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
                   >
@@ -172,18 +156,18 @@ export default function WarehouseForm({ isOpen, onClose, onSuccess, initialData 
                 <div className="space-y-1.5 flex flex-col justify-end pb-2">
                   <div className="flex items-center gap-6">
                     <label className="flex items-center gap-2 cursor-pointer">
-                      <input 
-                        type="checkbox" 
-                        checked={isActive} 
+                      <input
+                        type="checkbox"
+                        checked={isActive}
                         onChange={(e) => setIsActive(e.target.checked)}
                         className="w-4 h-4 rounded border-zinc-300 text-primary focus:ring-primary"
                       />
                       <span className="text-sm font-medium text-foreground">{t('warehouse.activeStatus', 'Active Warehouse')}</span>
                     </label>
                     <label className="flex items-center gap-2 cursor-pointer">
-                      <input 
-                        type="checkbox" 
-                        checked={isDefault} 
+                      <input
+                        type="checkbox"
+                        checked={isDefault}
                         onChange={(e) => setIsDefault(e.target.checked)}
                         className="w-4 h-4 rounded border-zinc-300 text-primary focus:ring-primary"
                       />

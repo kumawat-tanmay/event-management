@@ -111,6 +111,11 @@ const getMe = async (req, res) => {
         role: roleName,
         permissions: permissions,
         avatar: user.avatar || null,
+        phone: user.phone || '',
+        address: user.address || '',
+        dob: user.dob || null,
+        gender: user.gender || '',
+        description: user.description || '',
       }
     });
   } catch (error) {
@@ -301,6 +306,21 @@ const updateProfile = async (req, res) => {
     if (req.body.name) {
       user.name = req.body.name;
     }
+    if (req.body.phone !== undefined) {
+      user.phone = req.body.phone;
+    }
+    if (req.body.address !== undefined) {
+      user.address = req.body.address;
+    }
+    if (req.body.dob !== undefined) {
+      user.dob = req.body.dob || null;
+    }
+    if (req.body.gender !== undefined) {
+      user.gender = req.body.gender;
+    }
+    if (req.body.description !== undefined) {
+      user.description = req.body.description;
+    }
 
     // Avatar upload
     if (req.file) {
@@ -326,6 +346,11 @@ const updateProfile = async (req, res) => {
         role: roleName,
         permissions: permissions,
         avatar: user.avatar || null,
+        phone: user.phone || '',
+        address: user.address || '',
+        dob: user.dob || null,
+        gender: user.gender || '',
+        description: user.description || '',
         token: generateToken(user._id)
       }
     });

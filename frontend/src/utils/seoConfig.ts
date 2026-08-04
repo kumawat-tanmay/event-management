@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 
-const BASE_URL = (process.env.NEXT_PUBLIC_FRONTEND_URL || "https://event-management-lac-eight.vercel.app").trim().replace(/\/$/, '');
+const BASE_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || "http://localhost:3000";
 
 export const defaultSEO = {
     // ================= BASIC GLOBAL =================
@@ -28,11 +28,11 @@ export const defaultSEO = {
     email: "info@krishnatent.com",
 
     // ================= IMAGES =================
-    image: "/logo/og-image1.png",
+    image: `${BASE_URL}/logo/og-image1.png`,
     imageAlt: "Krishna Tent & Events ERP",
     imageType: "image/png",
 
-    ogImage: "/logo/og-image1.png",
+    ogImage: `${BASE_URL}/logo/og-image1.png`,
     ogImageAlt: "Krishna Tent & Events ERP - Event Management System",
     ogImageType: "image/png",
 
@@ -85,7 +85,7 @@ export const defaultSEO = {
     organization: {
         name: "Krishna Tent & Events",
         url: BASE_URL,
-        logo: "/logo/og-image1.png",
+        logo: `${BASE_URL}/logo/og-image1.png`,
 
         sameAs: [
             "https://twitter.com/krishnatent",

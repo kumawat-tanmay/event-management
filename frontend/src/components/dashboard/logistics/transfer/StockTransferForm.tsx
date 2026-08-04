@@ -360,11 +360,14 @@ export function StockTransferForm({ transferId }: StockTransferFormProps = {}) {
                           </td>
                           <td className="p-4 text-center">
                             <input
-                              type="number"
-                              min="1"
-                              max={item.maxStock}
-                              value={item.quantity}
-                              onChange={e => handleQtyChange(idx, Number(e.target.value))}
+                              type="text"
+                              value={item.quantity === 0 ? '' : item.quantity}
+                              onChange={e => {
+                                let val = e.target.value.replace(/[^0-9]/g, '');
+                                let num = val === '' ? 0 : Number(val);
+                                if (num > item.maxStock) num = item.maxStock;
+                                handleQtyChange(idx, num);
+                              }}
                               disabled={isEditMode && transferStatus !== 'Requested'}
                               className="w-20 px-2 py-1.5 border border-border focus:border-primary text-center rounded-md font-bold text-sm bg-background transition-colors outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-60"
                             />

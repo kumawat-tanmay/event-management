@@ -27,8 +27,7 @@ const corsOptions = {
     const normalize = (url) => url.replace(/\/$/, '').toLowerCase();
     const normalizedOrigin = normalize(origin);
 
-    const isAllowed = allowedOrigins.some(allowed => normalize(allowed) === normalizedOrigin) || 
-                      normalizedOrigin.endsWith('.vercel.app');
+    const isAllowed = allowedOrigins.some(allowed => normalize(allowed) === normalizedOrigin);
 
     if (isAllowed) {
       return callback(null, true);

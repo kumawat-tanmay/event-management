@@ -12,6 +12,10 @@ const warehouseStockSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  unitCost: {
+    type: Number,
+    default: 0
+  },
   dispatched: {
     type: Number,
     default: 0
@@ -42,10 +46,6 @@ const itemSchema = new mongoose.Schema({
   unit: {
     type: String,
     default: 'Pieces'
-  },
-  rentalPrice: {
-    type: Number,
-    default: 0
   },
   purchaseCost: {
     type: Number,

@@ -172,7 +172,6 @@ export function AnalyticsView() {
     { header: 'SKU Code', accessorKey: 'sku', cell: (row: any) => <span className="font-mono text-xs text-foreground">{row.sku}</span> },
     { header: 'Item Name', accessorKey: 'name', cell: (row: any) => <span className="font-bold text-foreground">{row.name}</span> },
     { header: 'Category', accessorKey: 'category' },
-    { header: 'Rental Price', accessorKey: 'rentalPrice', cell: (row: any) => `₹${row.rentalPrice.toLocaleString()}` },
     { header: 'Purchase Cost', accessorKey: 'purchaseCost', cell: (row: any) => `₹${row.purchaseCost.toLocaleString()}` },
     { header: 'Min Stock Level', accessorKey: 'minStockAlert', cell: (row: any) => <span className="font-semibold text-warning">{row.minStockAlert}</span> }
   ];

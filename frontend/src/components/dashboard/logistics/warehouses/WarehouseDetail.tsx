@@ -71,10 +71,10 @@ export default function WarehouseDetail({ warehouse, canUpdate, canDelete, onEdi
             )}
           </div>
           <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-6 text-xs md:text-sm text-muted-foreground ml-11 md:ml-0">
-            {warehouse.location && (
+            {warehouse.address && (
               <div className="flex items-center gap-1.5">
                 <MapPin className="w-4 h-4" />
-                <span>{warehouse.location}</span>
+                <span>{warehouse.address}</span>
               </div>
             )}
             {warehouse.managerId && (
@@ -211,12 +211,6 @@ function RackItem({ rack }: { rack: Rack }) {
         <div className="w-1.5 h-1.5 rounded-full bg-primary/40 group-hover:bg-primary transition-colors shrink-0"></div>
         <span className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors truncate">{rack.name}</span>
       </div>
-      
-      {rack.capacity && rack.capacity !== 'N/A' && (
-        <span className="text-[10px] font-bold tracking-wide text-muted-foreground bg-zinc-200/80 dark:bg-zinc-800/80 px-2 py-0.5 rounded shadow-sm border border-border/40 shrink-0">
-          {rack.capacity}
-        </span>
-      )}
     </div>
   );
 }

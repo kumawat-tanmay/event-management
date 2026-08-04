@@ -1,1 +1,9 @@
-export default function PlaceholderPage() { return <div className='p-8 flex items-center justify-center h-screen text-muted-foreground'>Coming Soon...</div>; }
+import { RoleDetailView } from '@/components/dashboard/settings/RoleDetailView';
+
+export const metadata = {
+  title: 'Role Details - ERP Settings',
+};
+
+export default function RoleDetailPage() {
+  return <RoleDetailView />;
+}

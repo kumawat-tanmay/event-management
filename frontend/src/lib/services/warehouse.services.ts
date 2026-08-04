@@ -18,10 +18,8 @@ export interface Warehouse {
   _id: string;
   name: string;
   code?: string;
-  location?: string;
   address?: string;
   phone?: string;
-  capacity?: number;
   isDefault?: boolean;
   managerId?: {
     _id: string;

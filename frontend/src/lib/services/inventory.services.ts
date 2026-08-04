@@ -5,6 +5,7 @@ export interface WarehouseStockEntry {
   zoneId?: string;
   rackId?: string;
   quantity: number;
+  unitCost: number;
   dispatched: number;
   damaged: number;
 }
@@ -51,6 +52,7 @@ export interface LedgerEntry {
   balanceAfter: number;
   reference?: string;
   referenceType?: string;
+  unitCost?: number;
   remarks?: string;
   performedBy: { _id: string; name: string };
   createdAt: string;
@@ -101,11 +103,6 @@ export const inventoryService = {
 
   getItemById: async (id: string): Promise<Item> => {
     const res = await apiClient.get(`/inventory/items/${id}`);
-    return res.data.data;
-  },
-
-  adjustStock: async (id: string, data: { warehouseId: string; quantity: number; zoneId?: string; rackId?: string; notes?: string }): Promise<Item> => {
-    const res = await apiClient.post(`/inventory/items/${id}/adjust-stock`, data);
     return res.data.data;
   },
 

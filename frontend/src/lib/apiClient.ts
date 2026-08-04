@@ -27,6 +27,11 @@ export interface AuthUser {
   isActive: boolean;
   isDeleted: boolean;
   googleId?: string;
+  phone?: string;
+  address?: string;
+  dob?: string;
+  gender?: string;
+  description?: string;
   createdAt: string;
   updatedAt: string;
   [key: string]: any; // Allow future dynamic fields
@@ -41,7 +46,7 @@ export interface ApiResponse<T = any> {
 
 // ─── Base URL Configuration ──────────────────────────────────────────────────
 export const getBackendBaseUrl = () => {
-  const url = process.env.NEXT_PUBLIC_API_URL || 'https://event-management-x2m7.vercel.app/api';
+  const url = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
   return url.replace(/([^:]\/)\/+/g, "$1").replace(/\/$/, "");
 };
 

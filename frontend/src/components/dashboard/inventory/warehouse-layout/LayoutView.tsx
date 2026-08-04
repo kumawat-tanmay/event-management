@@ -178,7 +178,7 @@ export default function LayoutView() {
   const filteredWarehouses = useMemo(() => {
     return activeWarehouses.filter(wh => 
       wh.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (wh.location || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (wh.address || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       (wh.code || '').toLowerCase().includes(searchQuery.toLowerCase())
     );
   }, [activeWarehouses, searchQuery]);

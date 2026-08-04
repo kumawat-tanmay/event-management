@@ -64,7 +64,7 @@ const getWarehouseById = async (req, res) => {
 // @access  Private (warehouses.create)
 const createWarehouse = async (req, res) => {
   try {
-    const { name, code, location, address, phone, managerId, incharge, capacity, isDefault, isActive, zones } = req.body;
+    const { name, code, location, address, phone, managerId, incharge, isDefault, isActive, zones } = req.body;
 
     if (!name) {
       return res.status(400).json({ success: false, message: 'Warehouse name is required' });
@@ -95,7 +95,6 @@ const createWarehouse = async (req, res) => {
       location: location || address || '',
       address: address || location || '',
       phone: phone || '',
-      capacity: capacity ? Number(capacity) : 5000,
       managerId: managerId || incharge || req.user._id,
       incharge: incharge || managerId || req.user._id,
       isDefault: Boolean(isDefault),
@@ -125,7 +124,7 @@ const createWarehouse = async (req, res) => {
 // @access  Private (warehouses.update)
 const updateWarehouse = async (req, res) => {
   try {
-    const { name, code, location, address, phone, managerId, incharge, capacity, isDefault, isActive, zones } = req.body;
+    const { name, code, location, address, phone, managerId, incharge, isDefault, isActive, zones } = req.body;
 
     const warehouse = await Warehouse.findOne({ _id: req.params.id, isDeleted: false });
 
@@ -150,7 +149,6 @@ const updateWarehouse = async (req, res) => {
     if (location !== undefined) warehouse.location = location;
     if (address !== undefined) warehouse.address = address;
     if (phone !== undefined) warehouse.phone = phone;
-    if (capacity !== undefined) warehouse.capacity = Number(capacity);
     if (managerId !== undefined) warehouse.managerId = managerId || null;
     if (incharge !== undefined) warehouse.incharge = incharge || null;
     if (isActive !== undefined) warehouse.isActive = Boolean(isActive);
@@ -249,7 +247,7 @@ const bulkImportWarehouseLayout = async (req, res) => {
         description: z.description ? String(z.description).trim() : '',
         racks: Array.isArray(z.racks) ? z.racks.map(r => ({
           name: r.name ? String(r.name).trim() : 'Rack 1',
-          capacity: r.capacity ? String(r.capacity).trim() : '500',
+          capacity: r.capacity ? String(r.capacity).trim() : '',
           description: r.description ? String(r.description).trim() : ''
         })) : []
       }));
@@ -265,7 +263,7 @@ const bulkImportWarehouseLayout = async (req, res) => {
 
         const importRacks = Array.isArray(importZone.racks) ? importZone.racks.map(r => ({
           name: r.name ? String(r.name).trim() : 'Rack',
-          capacity: r.capacity ? String(r.capacity).trim() : '500',
+          capacity: r.capacity ? String(r.capacity).trim() : '',
           description: r.description ? String(r.description).trim() : ''
         })) : [];
 

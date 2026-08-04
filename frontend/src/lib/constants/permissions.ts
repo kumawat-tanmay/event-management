@@ -5,6 +5,11 @@ export const PERMISSION_MODULES = [
     permissions: [{ key: 'dashboard.view', label: 'View Dashboard Statistics' }],
   },
   {
+    module: 'calendar',
+    label: 'Calendar',
+    permissions: [{ key: 'calendar.view', label: 'View Event Calendar' }],
+  },
+  {
     module: 'crm',
     label: 'CRM',
     permissions: [

@@ -21,6 +21,8 @@ const InventoryLedger = require('../models/InventoryLedger');
 const Staff = require('../models/Staff');
 const Vehicle = require('../models/Vehicle');
 const WarehouseTransfer = require('../models/WarehouseTransfer');
+const Role = require('../models/Role');
+const { DEFAULT_ROLES } = require('../config/permissions');
 
 const seedDB = async () => {
   try {
@@ -49,7 +51,18 @@ const seedDB = async () => {
     await Staff.deleteMany({});
     await Vehicle.deleteMany({});
     await WarehouseTransfer.deleteMany({});
+    await Role.deleteMany({});
     console.log(`Old data cleared.`);
+
+    console.log(`Seeding Default Roles...`);
+    const roleDocs = Object.values(DEFAULT_ROLES).map(r => ({
+      name: r.name,
+      permissions: r.permissions,
+      isSystem: r.isSystem || true,
+      isDeleted: false,
+    }));
+    await Role.insertMany(roleDocs);
+    console.log(`Default roles seeded.`);
 
     // 1. Company Profile
     console.log(`Seeding Company Profile...`);
@@ -98,7 +111,7 @@ const seedDB = async () => {
       name: 'Suresh Gurjar',
       email: 'store@krishnatent.com',
       password: 'Admin@123',
-      role: 'Store Manager',
+      role: 'Manager',
       status: 'Active',
       isActive: true
     });
@@ -247,21 +260,21 @@ const seedDB = async () => {
     // 5. Inventory Catalog (Items) with Warehouse Stock Breakup
     console.log(`Seeding Inventory Catalog & Godown Breakdown...`);
     const rawItemsData = [
-      { name: 'German Waterproof Tent Panel (10x20 ft)', code: 'ITEM-GER-TENT', category: 'Tents & Structure', unit: 'sq ft', minStockAlert: 500, totalStock: 3000, rentalPrice: 45, description: 'Heavy-duty aluminium German waterproof structure' },
-      { name: 'Royal Sofa Set (3-Seater Velvet)', code: 'ITEM-SOFA-3S', category: 'Furniture', unit: 'set', minStockAlert: 20, totalStock: 80, rentalPrice: 1500, description: 'Luxury golden trim velvet 3-seater sofa for stage' },
-      { name: 'Golden Maharaja Chair', code: 'ITEM-MAH-CHAIR', category: 'Furniture', unit: 'pc', minStockAlert: 30, totalStock: 150, rentalPrice: 450, description: 'Carved golden throne chair for groom & bride' },
-      { name: 'Banquet Chair with White Cushion & Cover', code: 'ITEM-BAN-CHAIR', category: 'Furniture', unit: 'pc', minStockAlert: 500, totalStock: 2500, rentalPrice: 40, description: 'Steel frame cushioned banquet chair with satin cover' },
-      { name: 'Round Dining Table (6 Feet)', code: 'ITEM-TBL-6FT', category: 'Furniture', unit: 'pc', minStockAlert: 50, totalStock: 200, rentalPrice: 250, description: 'Round wooden dining table with tablecloth' },
-      { name: 'LED Flood Light 200W Warm White', code: 'ITEM-LED-200W', category: 'Lighting', unit: 'pc', minStockAlert: 100, totalStock: 400, rentalPrice: 120, description: 'High-intensity IP65 warm LED flood light' },
-      { name: 'Crystal Chandelier Jhummar (4 Feet)', code: 'ITEM-JHUMMAR-4F', category: 'Lighting', unit: 'pc', minStockAlert: 10, totalStock: 30, rentalPrice: 2500, description: 'Decorative crystal chandelier for tent ceiling' },
-      { name: 'Red Royal Carpet Heavy GSM', code: 'ITEM-CRPT-RED', category: 'Carpets & Flooring', unit: 'sq ft', minStockAlert: 2000, totalStock: 10000, rentalPrice: 15, description: 'Plush red carpet for entrance & aisles' },
-      { name: 'JBL VRX Tour Line Array Sound System', code: 'ITEM-JBL-SOUND', category: 'Sound System', unit: 'set', minStockAlert: 2, totalStock: 6, rentalPrice: 18000, description: 'Complete outdoor line array sound setup with subwoofers' },
-      { name: 'P3 Outdoor LED Video Wall (12x8 ft)', code: 'ITEM-LED-WALL', category: 'Audio Visual', unit: 'set', minStockAlert: 2, totalStock: 5, rentalPrice: 22000, description: 'High resolution P3 LED screen with video processor' },
-      { name: 'Buffet Counter Setup (Steel & Glass)', code: 'ITEM-BUFFET-SET', category: 'Catering Equipment', unit: 'counter', minStockAlert: 10, totalStock: 40, rentalPrice: 1200, description: 'Illuminated glass & stainless steel food counter' },
-      { name: 'Stage Flower Arch Frame (Waterdrop Shape)', code: 'ITEM-FLWR-ARCH', category: 'Decoration', unit: 'pc', minStockAlert: 5, totalStock: 15, rentalPrice: 3500, description: 'Iron arch frame for floral stage entrance' },
-      { name: 'Pagoda Canopy Tent (15x15 ft)', code: 'ITEM-PAGODA-15', category: 'Tents & Structure', unit: 'pc', minStockAlert: 20, totalStock: 60, rentalPrice: 2200, description: 'Peak top white pagoda tent for stalls & VIP entry' },
-      { name: 'Halogen Warm Halide Light 1000W', code: 'ITEM-HAL-1000W', category: 'Lighting', unit: 'pc', minStockAlert: 50, totalStock: 200, rentalPrice: 80, description: 'Halide light for lawn perimeter illumination' },
-      { name: 'Wooden Stage Platform Module (4x8 ft)', code: 'ITEM-STG-MOD', category: 'Stage & Truss', unit: 'pc', minStockAlert: 40, totalStock: 120, rentalPrice: 300, description: 'Heavy plywood stage module with steel legs' }
+      { name: 'German Waterproof Tent Panel (10x20 ft)', code: 'ITEM-GER-TENT', category: 'Tents & Structure', unit: 'sq ft', minStockAlert: 500, totalStock: 3000, description: 'Heavy-duty aluminium German waterproof structure' },
+      { name: 'Royal Sofa Set (3-Seater Velvet)', code: 'ITEM-SOFA-3S', category: 'Furniture', unit: 'set', minStockAlert: 20, totalStock: 80, description: 'Luxury golden trim velvet 3-seater sofa for stage' },
+      { name: 'Golden Maharaja Chair', code: 'ITEM-MAH-CHAIR', category: 'Furniture', unit: 'pc', minStockAlert: 30, totalStock: 150, description: 'Carved golden throne chair for groom & bride' },
+      { name: 'Banquet Chair with White Cushion & Cover', code: 'ITEM-BAN-CHAIR', category: 'Furniture', unit: 'pc', minStockAlert: 500, totalStock: 2500, description: 'Steel frame cushioned banquet chair with satin cover' },
+      { name: 'Round Dining Table (6 Feet)', code: 'ITEM-TBL-6FT', category: 'Furniture', unit: 'pc', minStockAlert: 50, totalStock: 200, description: 'Round wooden dining table with tablecloth' },
+      { name: 'LED Flood Light 200W Warm White', code: 'ITEM-LED-200W', category: 'Lighting', unit: 'pc', minStockAlert: 100, totalStock: 400, description: 'High-intensity IP65 warm LED flood light' },
+      { name: 'Crystal Chandelier Jhummar (4 Feet)', code: 'ITEM-JHUMMAR-4F', category: 'Lighting', unit: 'pc', minStockAlert: 10, totalStock: 30, description: 'Decorative crystal chandelier for tent ceiling' },
+      { name: 'Red Royal Carpet Heavy GSM', code: 'ITEM-CRPT-RED', category: 'Carpets & Flooring', unit: 'sq ft', minStockAlert: 2000, totalStock: 10000, description: 'Plush red carpet for entrance & aisles' },
+      { name: 'JBL VRX Tour Line Array Sound System', code: 'ITEM-JBL-SOUND', category: 'Sound System', unit: 'set', minStockAlert: 2, totalStock: 6, description: 'Complete outdoor line array sound setup with subwoofers' },
+      { name: 'P3 Outdoor LED Video Wall (12x8 ft)', code: 'ITEM-LED-WALL', category: 'Audio Visual', unit: 'set', minStockAlert: 2, totalStock: 5, description: 'High resolution P3 LED screen with video processor' },
+      { name: 'Buffet Counter Setup (Steel & Glass)', code: 'ITEM-BUFFET-SET', category: 'Catering Equipment', unit: 'counter', minStockAlert: 10, totalStock: 40, description: 'Illuminated glass & stainless steel food counter' },
+      { name: 'Stage Flower Arch Frame (Waterdrop Shape)', code: 'ITEM-FLWR-ARCH', category: 'Decoration', unit: 'pc', minStockAlert: 5, totalStock: 15, description: 'Iron arch frame for floral stage entrance' },
+      { name: 'Pagoda Canopy Tent (15x15 ft)', code: 'ITEM-PAGODA-15', category: 'Tents & Structure', unit: 'pc', minStockAlert: 20, totalStock: 60, description: 'Peak top white pagoda tent for stalls & VIP entry' },
+      { name: 'Halogen Warm Halide Light 1000W', code: 'ITEM-HAL-1000W', category: 'Lighting', unit: 'pc', minStockAlert: 50, totalStock: 200, description: 'Halogen light for lawn perimeter illumination' },
+      { name: 'Wooden Stage Platform Module (4x8 ft)', code: 'ITEM-STG-MOD', category: 'Stage & Truss', unit: 'pc', minStockAlert: 40, totalStock: 120, description: 'Heavy plywood stage module with steel legs' }
     ];
 
     const itemsData = rawItemsData.map(it => {

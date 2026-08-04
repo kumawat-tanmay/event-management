@@ -43,13 +43,16 @@ export function StockAvailabilityCheck({ itemId, requestedQty, startDate, endDat
 
   return (
     <div className={`flex items-center justify-between text-xs mt-2 p-2 rounded-lg font-sans border ${
-      isAvailable ? 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20 dark:text-emerald-400' : 'bg-rose-500/10 text-rose-700 border-rose-500/20 dark:text-rose-400'
+      isAvailable ? 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20 dark:text-emerald-400' : 'bg-amber-500/10 text-amber-700 border-amber-500/20 dark:text-amber-400'
     }`}>
       <div className="flex items-center gap-1.5 font-bold">
-        {isAvailable ? <CheckCircle className="w-3.5 h-3.5" /> : <AlertTriangle className="w-3.5 h-3.5" />}
-        <span>{isAvailable ? 'Stock Available' : 'Stock Shortage'}</span>
+        <Layers className="w-3.5 h-3.5" />
+        <span>Live Stock Status</span>
       </div>
-      <span className="font-semibold">Available: {totalAvailable}</span>
+      <div className="flex items-center gap-3">
+        {requestedQty > 0 && <span className="opacity-75 font-medium">Req: {requestedQty}</span>}
+        <span className="font-extrabold">Avail: {totalAvailable}</span>
+      </div>
     </div>
   );
 }
@@ -157,6 +160,31 @@ export function ItemSelectorModal({
     return true;
   });
 
+  const handleQuantitySet = (id: string, value: number) => {
+    setSelectedItems(prev => {
+      const next = Math.max(0, value);
+      
+      const newItems = { ...prev };
+      if (next === 0) {
+        delete newItems[id];
+      } else {
+        newItems[id] = next;
+      }
+
+      if (next > 0 && startDate && endDate && triggerStockCheck) {
+        const payload = Object.entries(newItems).map(([itemId, qty]) => ({
+          item: itemId,
+          quantity: qty
+        }));
+        if (payload.length > 0) {
+          triggerStockCheck(payload);
+        }
+      }
+
+      return newItems;
+    });
+  };
+
   const handleQuantityChange = (id: string, delta: number) => {
     setSelectedItems(prev => {
       const current = prev[id] || 0;
@@ -204,6 +232,7 @@ export function ItemSelectorModal({
   };
 
   const totalSelectedItems = Object.keys(selectedItems).length;
+  const totalSelectedQty = Object.values(selectedItems).reduce((sum, qty) => sum + qty, 0);
 
   return (
     <FormDrawer
@@ -401,7 +430,19 @@ export function ItemSelectorModal({
                         >
                           <Minus className="w-3.5 h-3.5" />
                         </button>
-                        <span className="w-8 text-center font-bold text-sm">{selectedQty}</span>
+                        <input
+                          type="text"
+                          maxLength={5}
+                          value={selectedQty === 0 ? '' : selectedQty}
+                          placeholder="0"
+                          onChange={(e) => {
+                            let val = e.target.value.replace(/[^0-9]/g, '');
+                            if (val.length > 5) val = val.slice(0, 5);
+                            const num = val === '' ? 0 : Number(val);
+                            handleQuantitySet(item._id, Math.min(num, 99999));
+                          }}
+                          className="w-12 text-center font-bold text-sm bg-transparent border-none focus:outline-none p-0"
+                        />
                         <button 
                           type="button"
                           onClick={() => handleQuantityChange(item._id, 1)}

@@ -10,6 +10,9 @@ const PERMISSIONS = {
   // Dashboard
   DASHBOARD_VIEW: 'dashboard.view',
 
+  // Calendar
+  CALENDAR_VIEW: 'calendar.view',
+
   // CRM
   CRM_VIEW: 'crm.view',
   CRM_CREATE: 'crm.create',
@@ -86,6 +89,11 @@ const PERMISSION_MODULES = [
     module: 'dashboard',
     label: 'Dashboard',
     permissions: [{ key: 'dashboard.view', label: 'View Dashboard Statistics' }],
+  },
+  {
+    module: 'calendar',
+    label: 'Calendar',
+    permissions: [{ key: 'calendar.view', label: 'View Event Calendar' }],
   },
   {
     module: 'crm',
@@ -226,7 +234,7 @@ const DEFAULT_ROLES = {
     name: 'Admin',
     description: 'Senior Administrator handling platform tools, bookings, and operations.',
     permissions: [
-      'dashboard.view', 'crm.*', 'quotations.*', 'bookings.*', 'warehouses.*',
+      'dashboard.view', 'calendar.*', 'crm.*', 'quotations.*', 'bookings.*', 'warehouses.*',
       'inventory.*', 'operations.*', 'finance.*', 'purchases.*', 'hr.*',
       'reports.view', 'users.*', 'roles.*', 'company.update'
     ],
@@ -236,51 +244,11 @@ const DEFAULT_ROLES = {
     name: 'Manager',
     description: 'General Manager handling CRM and Bookings. View-only access to Warehouses/Inventory.',
     permissions: [
-      'dashboard.view', 'crm.*', 'quotations.*', 'bookings.*',
+      'dashboard.view', 'calendar.view', 'crm.*', 'quotations.*', 'bookings.*',
       'warehouses.view', 'inventory.view', 'operations.*', 'reports.view', 'hr.view'
     ],
     isSystem: true
   },
-  store_manager: {
-    name: 'Store Manager',
-    description: 'Manages Godowns, Inventory, transfers, and loading slips.',
-    permissions: [
-      'dashboard.view', 'warehouses.*', 'inventory.*', 'operations.*', 'purchases.view', 'reports.view'
-    ],
-    isSystem: true
-  },
-  accountant: {
-    name: 'Accountant',
-    description: 'Manages payments, ledgers, and expenses.',
-    permissions: [
-      'dashboard.view', 'finance.*', 'bookings.view', 'reports.view'
-    ],
-    isSystem: true
-  },
-  supervisor: {
-    name: 'Supervisor',
-    description: 'Manages site execution, site receipt, and returns from the field.',
-    permissions: [
-      'dashboard.view', 'operations.view', 'operations.update', 'bookings.view'
-    ],
-    isSystem: true
-  },
-  driver: {
-    name: 'Driver',
-    description: 'Tracks dispatch and material movement.',
-    permissions: [
-      'dashboard.view', 'operations.view'
-    ],
-    isSystem: true
-  },
-  staff: {
-    name: 'Staff',
-    description: 'General staff handling assigned tasks.',
-    permissions: [
-      'dashboard.view'
-    ],
-    isSystem: true
-  }
 };
 
 module.exports = { PERMISSIONS, PERMISSION_MODULES, DEFAULT_ROLES };

@@ -55,28 +55,28 @@ export function ReservationView() {
     {
       header: 'Booking ID',
       accessorKey: 'bookingRef',
-      cell: (row: any) => <span className="font-mono text-sm font-bold text-foreground">{row.bookingRef}</span>
+      cell: (row: any) => <span className="font-mono text-sm font-bold text-foreground whitespace-nowrap">{row.bookingRef}</span>
     },
     {
       header: t('bookings.customer'),
       accessorKey: 'customerName',
-      cell: (row: any) => <p className="font-bold text-foreground">{row.customerName}</p>
+      cell: (row: any) => <p className="font-bold text-foreground whitespace-nowrap">{row.customerName}</p>
     },
     {
       header: t('reservation.item'),
       accessorKey: 'itemName',
-      cell: (row: any) => <p className="text-sm font-semibold text-foreground">{row.itemName}</p>
+      cell: (row: any) => <p className="text-sm font-semibold text-foreground whitespace-nowrap">{row.itemName}</p>
     },
     {
       header: 'Total Qty',
       accessorKey: 'quantity',
-      cell: (row: any) => <span className="font-bold text-foreground">{row.quantity}</span>
+      cell: (row: any) => <span className="font-bold text-foreground whitespace-nowrap">{row.quantity}</span>
     },
     {
       header: t('reservation.dates'),
       accessorKey: 'dates',
       cell: (row: any) => (
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground whitespace-nowrap">
           <Calendar className="w-3.5 h-3.5" />
           <span>{row.dates}</span>
         </div>

@@ -26,7 +26,7 @@ export function QuotationForm({ isEdit = false }: QuotationFormProps) {
   const getBilingualText = useCallback((key: string) => {
     return t(key);
   }, [t]);
-
+  
   const router = useRouter();
   const { id } = useParams();
   const [loading, setLoading] = useState(false);
@@ -169,7 +169,7 @@ export function QuotationForm({ isEdit = false }: QuotationFormProps) {
 
   const handleAddItems = (newItems: any[]) => {
     const updatedItems = [...items];
-
+    
     newItems.forEach(newItem => {
       const existingIdx = updatedItems.findIndex(i => i.id === newItem.id);
       if (existingIdx >= 0) {
@@ -258,9 +258,9 @@ export function QuotationForm({ isEdit = false }: QuotationFormProps) {
   return (
     <div className="flex flex-col p-4 md:p-6 lg:p-8 w-full font-sans">
       <div className="flex items-center gap-4 mb-8">
-        <Button
-          variant="ghost"
-          size="icon"
+        <Button 
+          variant="ghost" 
+          size="icon" 
           onClick={() => router.back()}
           className="shrink-0"
         >
@@ -290,7 +290,7 @@ export function QuotationForm({ isEdit = false }: QuotationFormProps) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-bold text-foreground">{getBilingualText('operationForm.customerLabel')}</label>
-                  <select
+                  <select 
                     className="w-full h-10 px-3 rounded-lg border border-border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
                     value={customer}
                     onChange={(e) => {
@@ -313,7 +313,7 @@ export function QuotationForm({ isEdit = false }: QuotationFormProps) {
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-bold text-foreground">{getBilingualText('operationForm.eventTypeLabel')}</label>
-                  <select
+                  <select 
                     className="w-full h-10 px-3 rounded-lg border border-border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
                     value={eventType}
                     onChange={(e) => setEventType(e.target.value)}
@@ -329,8 +329,8 @@ export function QuotationForm({ isEdit = false }: QuotationFormProps) {
               </div>
 
               <div className="space-y-2">
-                <Input
-                  label={getBilingualText('operationForm.eventTitleLabel')}
+                <Input 
+                  label={getBilingualText('operationForm.eventTitleLabel')} 
                   type="text"
                   placeholder={getBilingualText('operationForm.eventTitlePlaceholder')}
                   value={eventTitle}
@@ -340,15 +340,15 @@ export function QuotationForm({ isEdit = false }: QuotationFormProps) {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input
-                  label={getBilingualText('operationForm.eventStartDateLabel')}
+                <Input 
+                  label={getBilingualText('operationForm.eventStartDateLabel')} 
                   type="date"
                   value={eventStartDate}
                   onChange={(e) => setEventStartDate(e.target.value)}
                   required
                 />
-                <Input
-                  label={getBilingualText('operationForm.eventEndDateLabel')}
+                <Input 
+                  label={getBilingualText('operationForm.eventEndDateLabel')} 
                   type="date"
                   value={eventEndDate}
                   onChange={(e) => setEventEndDate(e.target.value)}
@@ -357,8 +357,8 @@ export function QuotationForm({ isEdit = false }: QuotationFormProps) {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input
-                  label={getBilingualText('operationForm.validUntilLabel')}
+                <Input 
+                  label={getBilingualText('operationForm.validUntilLabel')} 
                   type="date"
                   value={validUntil}
                   onChange={(e) => setValidUntil(e.target.value)}
@@ -367,7 +367,7 @@ export function QuotationForm({ isEdit = false }: QuotationFormProps) {
 
               <div className="space-y-2">
                 <label className="text-sm font-bold text-foreground">{getBilingualText('operationForm.venueAddressLabel')}</label>
-                <textarea
+                <textarea 
                   className="w-full min-h-[80px] p-3 rounded-lg border border-border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
                   placeholder={getBilingualText('operationForm.venueAddressPlaceholder')}
                   value={venueAddress}
@@ -388,10 +388,10 @@ export function QuotationForm({ isEdit = false }: QuotationFormProps) {
                 <CardDescription>{t('operationForm.materialsDesc')}</CardDescription>
               </div>
               <div className="flex items-center gap-2">
-                <Button
+                <Button 
                   type="button"
-                  variant="outline"
-                  size="sm"
+                  variant="outline" 
+                  size="sm" 
                   onClick={() => setIsItemSelectorOpen(true)}
                   className="flex items-center gap-2"
                 >
@@ -422,7 +422,7 @@ export function QuotationForm({ isEdit = false }: QuotationFormProps) {
                       {items.map((item) => (
                         <tr key={item.id} className="border-b border-border/50 hover:bg-muted/20">
                           <td className="px-4 py-3 min-w-[200px]">
-                            <input
+                            <input 
                               type="text"
                               value={item.name}
                               onChange={(e) => handleUpdateItemField(item.id, 'name', e.target.value)}
@@ -435,7 +435,7 @@ export function QuotationForm({ isEdit = false }: QuotationFormProps) {
                           </td>
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-1.5 w-24">
-                              <input
+                              <input 
                                 type="text"
                                 value={item.qty === 0 ? '' : item.qty}
                                 placeholder="1"
@@ -449,7 +449,7 @@ export function QuotationForm({ isEdit = false }: QuotationFormProps) {
                             </div>
                           </td>
                           <td className="px-4 py-3 text-right">
-                            <button
+                            <button 
                               type="button"
                               onClick={() => handleRemoveItem(item.id)}
                               className="p-1.5 text-muted-foreground hover:text-error hover:bg-error/10 rounded transition-colors"
@@ -482,25 +482,25 @@ export function QuotationForm({ isEdit = false }: QuotationFormProps) {
             <CardContent className="space-y-4">
               <div className="space-y-3 pb-4 border-b border-border">
                 <div className="space-y-4 pt-2">
-                  <Input
+                  <Input 
                     label={getBilingualText('operationForm.transportLabel')}
-                    placeholder={getBilingualText('operationForm.transportLabel')}
-                    type="number"
-                    value={transportCharges}
+                    placeholder={getBilingualText('operationForm.transportLabel')} 
+                    type="text"
+                    value={transportCharges === 0 ? '' : transportCharges}
                     onChange={(e) => {
-                      const val = e.target.value;
+                      const val = e.target.value.replace(/[^0-9]/g, '');
                       setTransportCharges(val === '' ? 0 : Number(val));
                     }}
                     className="text-right font-semibold text-foreground"
                     icon={Truck}
                   />
-                  <Input
+                  <Input 
                     label={getBilingualText('operationForm.labourLabel')}
-                    placeholder={getBilingualText('operationForm.labourLabel')}
-                    type="number"
-                    value={labourCharges}
+                    placeholder={getBilingualText('operationForm.labourLabel')} 
+                    type="text"
+                    value={labourCharges === 0 ? '' : labourCharges}
                     onChange={(e) => {
-                      const val = e.target.value;
+                      const val = e.target.value.replace(/[^0-9]/g, '');
                       setLabourCharges(val === '' ? 0 : Number(val));
                     }}
                     className="text-right font-semibold text-foreground"
@@ -512,16 +512,20 @@ export function QuotationForm({ isEdit = false }: QuotationFormProps) {
               <div className="space-y-3 pb-4 border-b border-border">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium text-muted-foreground">{getBilingualText('operationForm.discountLabel')}</span>
-                  <Input
-                    type="number"
-                    value={discount}
-                    onChange={(e) => setDiscount(Number(e.target.value))}
+                  <Input 
+                    type="text"
+                    value={discount === 0 ? '' : discount}
+                    onChange={(e) => {
+                      let val = e.target.value.replace(/[^0-9]/g, '');
+                      if (Number(val) > 100) val = '100';
+                      setDiscount(val === '' ? 0 : Number(val));
+                    }}
                     className="h-8 w-20 text-right font-semibold"
                     max="100"
                   />
                   <span className="text-sm font-bold text-success ml-auto">- ₹ {discountAmount.toLocaleString()}</span>
                 </div>
-
+                
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-muted-foreground font-medium">{getBilingualText('operationForm.taxableAmountLabel')}</span>
                   <span className="font-bold">₹ {taxableAmount.toLocaleString()}</span>
@@ -529,7 +533,7 @@ export function QuotationForm({ isEdit = false }: QuotationFormProps) {
 
                 <div className="flex items-center justify-between pt-1">
                   <span className="text-sm font-medium text-muted-foreground">{getBilingualText('operationForm.gstLabel')}</span>
-                  <select
+                  <select 
                     value={applyGst ? taxRate : 0}
                     onChange={(e) => {
                       const val = Number(e.target.value);
@@ -562,10 +566,10 @@ export function QuotationForm({ isEdit = false }: QuotationFormProps) {
               </div>
 
               <Button type="submit" variant="primary" className="w-full mt-4" disabled={loading || items.length === 0}>
-                {loading
-                  ? getBilingualText('operationForm.saving')
-                  : isEdit
-                    ? getBilingualText('operationForm.updateDetails')
+                {loading 
+                  ? getBilingualText('operationForm.saving') 
+                  : isEdit 
+                    ? getBilingualText('operationForm.updateDetails') 
                     : getBilingualText('operationForm.saveDetails')
                 }
               </Button>
@@ -574,8 +578,8 @@ export function QuotationForm({ isEdit = false }: QuotationFormProps) {
         </div>
       </form>
 
-      <ItemSelectorModal
-        isOpen={isItemSelectorOpen}
+      <ItemSelectorModal 
+        isOpen={isItemSelectorOpen} 
         onClose={() => setIsItemSelectorOpen(false)}
         onAddItems={handleAddItems}
         startDate={eventStartDate}

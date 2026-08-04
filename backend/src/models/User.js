@@ -41,6 +41,25 @@ const userSchema = new mongoose.Schema({
     enum: ['Pending', 'Active', 'Inactive'],
     default: 'Active',
   },
+  phone: {
+    type: String,
+    default: '',
+  },
+  address: {
+    type: String,
+    default: '',
+  },
+  dob: {
+    type: Date,
+  },
+  gender: {
+    type: String,
+    default: '',
+  },
+  description: {
+    type: String,
+    default: '',
+  },
   inviteExpiresAt: {
     type: Date,
   },

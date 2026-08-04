@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useTranslation } from 'react-i18next';
-import { Plus, Download, FileText, Eye, Edit, Trash2, Search, CheckCircle, Clock, CalendarDays, FileCheck, IndianRupee } from 'lucide-react';
+import { Plus, Download, FileText, Eye, Edit, Trash2, Search, CheckCircle, Clock, CalendarDays, FileCheck, IndianRupee, MessageSquare } from 'lucide-react';
 import { DataTable } from '@/components/common/DataTable';
 import { Button } from '@/components/common/Button';
 import { StatusBadge } from '@/components/common/StatusBadge';
@@ -11,6 +11,37 @@ import { StatsCard } from '@/components/common/StatsCard';
 import { ConfirmModal } from '@/components/common/ConfirmModal';
 import { quotationService, Quotation, QuotationStats } from '@/lib/services/quotation.services';
 import { ActionGuard } from '@/components/auth/ActionGuard';
+import { generatePdfFromHtml, sharePdfViaWhatsApp } from '@/utils/pdfShare';
+import { getQuotationPdfHtml } from '@/utils/pdfTemplates';
+
+const STATUS_OPTIONS: Quotation['status'][] = ['Draft', 'Sent', 'Approved', 'Rejected'];
+
+function StatusDropdown({ quotation, onStatusChange }: { quotation: any, onStatusChange: (id: string, status: Quotation['status']) => void }) {
+  const [isOpen, setIsOpen] = useState(false);
+  return (
+    <div className="relative inline-block">
+      <div onClick={() => setIsOpen(!isOpen)} className="cursor-pointer hover:opacity-80 transition-opacity">
+        <StatusBadge status={quotation.status} />
+      </div>
+      {isOpen && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setIsOpen(false); }} />
+          <div className="absolute z-50 top-full right-0 md:left-0 md:right-auto mt-1 w-36 bg-card border border-border rounded-xl shadow-xl p-2 flex flex-col gap-1.5 animate-in fade-in zoom-in-95 duration-100">
+            {STATUS_OPTIONS.map(s => (
+              <div 
+                key={s} 
+                onClick={() => { onStatusChange(quotation._id, s); setIsOpen(false); }}
+                className="cursor-pointer hover:bg-muted p-1.5 rounded-lg transition-colors flex items-center justify-center relative z-10"
+              >
+                <StatusBadge status={s} className="w-full" />
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
 
 export function QuotationsView() {
   const { t } = useTranslation();
@@ -73,12 +104,40 @@ export function QuotationsView() {
     }
   };
 
+  const handleSendWhatsApp = async (qtn: Quotation) => {
+    const htmlContent = getQuotationPdfHtml(qtn);
+    const filename = `Quotation_${qtn.quotationId}.pdf`;
+    const customerPhone = qtn.customer?.phone || '';
+    
+    const message = `🏕️ *Krishna Tent & Events*
+
+Dear ${qtn.customer?.name || 'Customer'},
+
+Please find attached your *Quotation #${qtn.quotationId}* for the event:
+📋 *${qtn.eventTitle}*
+📅 ${new Date(qtn.eventStartDate).toLocaleDateString()} to ${new Date(qtn.eventEndDate).toLocaleDateString()}
+📍 ${qtn.venueAddress}
+💰 Grand Total: ₹${(qtn.grandTotal || 0).toLocaleString()}
+
+This quotation is valid for 5 days. Please review and confirm.
+
+Thank you!
+📞 +91 98290 12345`;
+
+    const blob = await generatePdfFromHtml(htmlContent, filename);
+    if (blob) {
+      await sharePdfViaWhatsApp(blob, filename, customerPhone, message);
+    } else {
+      alert("Failed to generate PDF");
+    }
+  };
+
   const columns = [
     { 
       header: t('quotation.quotationId'), 
       accessorKey: 'quotationId', 
       cell: (row: any) => (
-        <span className="font-mono text-sm font-bold text-foreground">
+        <span className="font-mono text-sm font-bold text-foreground whitespace-nowrap">
           {row.quotationId}
         </span>
       ) 
@@ -87,8 +146,8 @@ export function QuotationsView() {
       header: t('quotation.customer'), 
       accessorKey: 'customer', 
       cell: (row: any) => (
-        <div>
-          <p className="font-bold text-foreground">{row.customer?.name || '—'}</p>
+        <div className="whitespace-nowrap max-w-[150px] truncate" title={row.customer?.name}>
+          <p className="font-bold text-foreground truncate">{row.customer?.name || '—'}</p>
           <span className="text-xs text-muted-foreground">{row.customer?.type === 'Retail' ? t('crm.retail') : t('crm.corporate')}</span>
         </div>
       ) 
@@ -97,9 +156,9 @@ export function QuotationsView() {
       header: t('quotation.dates'), 
       accessorKey: 'dates', 
       cell: (row: any) => (
-        <div className="flex items-center gap-2 text-sm">
+        <div className="flex items-center gap-1.5 text-sm whitespace-nowrap">
           <CalendarDays className="w-4 h-4 text-muted-foreground" />
-          <span>{new Date(row.eventStartDate).toLocaleDateString()} to {new Date(row.eventEndDate).toLocaleDateString()}</span>
+          <span>{new Date(row.eventStartDate).toLocaleDateString()} - {new Date(row.eventEndDate).toLocaleDateString()}</span>
         </div>
       ) 
     },
@@ -107,7 +166,7 @@ export function QuotationsView() {
       header: t('quotation.amount'), 
       accessorKey: 'grandTotal', 
       cell: (row: any) => (
-        <span className="font-bold text-foreground">
+        <span className="font-bold text-foreground whitespace-nowrap">
           ₹ {(row.grandTotal || 0).toLocaleString()}
         </span>
       ) 
@@ -116,24 +175,45 @@ export function QuotationsView() {
       header: t('quotation.status'), 
       accessorKey: 'status', 
       cell: (row: any) => {
-        let statusKey = 'draft';
-        if (row.status === 'Sent') statusKey = 'sent';
-        if (row.status === 'Approved') statusKey = 'approved';
-        if (row.status === 'Converted') statusKey = 'converted';
-        if (row.status === 'Rejected') statusKey = 'rejected';
-        return <StatusBadge status={row.status} customText={t(`quotation.${statusKey}`)} />;
+        if (row.status === 'Converted') {
+          return <StatusBadge status={row.status} />;
+        }
+        
+        return (
+          <StatusDropdown 
+            quotation={row} 
+            onStatusChange={async (id, newStatus) => {
+              try {
+                await quotationService.updateQuotation(id, { status: newStatus });
+                // We assume fetchQuotations works via closure.
+                fetchQuotations();
+              } catch (error) {
+                console.error('Failed to update status', error);
+              }
+            }} 
+          />
+        );
       }
     },
     {
       header: t('quotation.actions'), 
       accessorKey: 'actions', 
       cell: (row: any) => (
-        <div className="flex items-center justify-end gap-2">
+        <div className="flex items-center justify-end gap-1 whitespace-nowrap">
           <Link href={`/operations/quotations/${row._id}`} title={t('quotation.viewQuotation')}>
             <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors">
               <Eye className="w-4 h-4" />
             </Button>
           </Link>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => handleSendWhatsApp(row)}
+            className="h-8 w-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 transition-colors"
+            title="Send to WhatsApp"
+          >
+            <MessageSquare className="w-4 h-4" />
+          </Button>
           <ActionGuard permission="quotations.update">
             <Link href={`/operations/quotations/${row._id}/edit`} title={t('quotation.editQuotation')}>
               <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors" disabled={row.status === 'Converted'}>

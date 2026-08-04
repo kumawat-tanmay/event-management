@@ -210,8 +210,9 @@ export function StockTransfersView() {
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`px-4 py-1.5 text-xs font-bold transition-all rounded-md whitespace-nowrap ${activeTab === tab ? 'bg-primary text-on-primary shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                  }`}
+                className={`px-4 py-1.5 text-xs font-bold transition-all rounded-md whitespace-nowrap ${
+                  activeTab === tab ? 'bg-primary text-on-primary shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                }`}
               >
                 {tab === 'ALL' ? t('transfer.allTransfers') : tab === 'REQUESTED' ? t('transfer.requested') : tab === 'IN-TRANSIT' ? t('transfer.inTransit') : tab === 'RECEIVED' ? t('transfer.received') : t('transfer.rejected')}
               </button>

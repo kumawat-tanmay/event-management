@@ -1,4 +1,12 @@
 const errorHandler = (err, req, res, next) => {
+  // Handle multer file size limit errors
+  if (err && err.code === 'LIMIT_FILE_SIZE') {
+    return res.status(400).json({
+      success: false,
+      message: 'File is too large. Maximum size allowed is 5MB.',
+    });
+  }
+
   const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
 
   // Log the error to the server console (vital for Vercel/production debugging)

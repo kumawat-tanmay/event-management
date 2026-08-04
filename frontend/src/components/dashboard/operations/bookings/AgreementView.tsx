@@ -3,9 +3,11 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
-import { Printer, ArrowLeft, ShieldCheck, Check } from 'lucide-react';
+import { Printer, ArrowLeft, ShieldCheck, Check, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/common/Button';
 import { bookingService, Booking } from '@/lib/services/booking.services';
+import { generatePdfFromHtml, sharePdfViaWhatsApp } from '@/utils/pdfShare';
+import { getBookingAgreementPdfHtml } from '@/utils/pdfTemplates';
 
 export function AgreementView() {
   const { t } = useTranslation();
@@ -47,6 +49,36 @@ export function AgreementView() {
       console.error('Error signing agreement:', error);
     } finally {
       setSigning(false);
+    }
+  };
+
+  const handleSendWhatsApp = async () => {
+    if (!booking) return;
+    
+    const htmlContent = getBookingAgreementPdfHtml(booking);
+    const filename = `Agreement_${booking.bookingId}.pdf`;
+    const customerPhone = booking.customer?.phone || '';
+    
+    const message = `🏕️ *Krishna Tent & Events*
+
+Dear ${booking.customer?.name || 'Customer'},
+
+Please find attached your *Rental Agreement #${booking.bookingId}* for the event:
+📋 *${booking.eventTitle}*
+📅 ${new Date(booking.eventStartDate).toLocaleDateString()} to ${new Date(booking.eventEndDate).toLocaleDateString()}
+📍 ${booking.venueAddress}
+💰 Grand Total: ₹${(booking.grandTotal || 0).toLocaleString()}
+✅ Advance Paid: ₹${(booking.advancePaid || 0).toLocaleString()}
+📝 Balance Due: ₹${(booking.balanceAmount || 0).toLocaleString()}
+
+Thank you for choosing Krishna Tent & Events!
+📞 +91 98290 12345`;
+
+    const blob = await generatePdfFromHtml(htmlContent, filename);
+    if (blob) {
+      await sharePdfViaWhatsApp(blob, filename, customerPhone, message);
+    } else {
+      alert("Failed to generate PDF");
     }
   };
 
@@ -110,6 +142,10 @@ export function AgreementView() {
               {getBilingualText('bookings.electronicallySigned')} ({new Date(booking.agreementSignedAt || '').toLocaleDateString()})
             </span>
           )}
+          <Button variant="outline" onClick={handleSendWhatsApp} className="flex items-center gap-1.5 text-emerald-600 border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700">
+            <MessageSquare className="w-4 h-4" />
+            Send PDF to WhatsApp
+          </Button>
           <Button variant="outline" onClick={handlePrint} className="flex items-center gap-1.5">
             <Printer className="w-4 h-4" />
             {t('bookings.printAgreement')}
