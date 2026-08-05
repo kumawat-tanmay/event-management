@@ -1,9 +1,9 @@
 import UsersListView from '@/components/dashboard/settings/UsersListView';
 
 export const metadata = {
-    title: 'My Profile | Krishna Tent & Events',
+    title: 'Users List | Krishna Tent & Events',
 };
 
-export default function ProfilePage() {
+export default function UsersPage() {
     return <UsersListView />;
 }
