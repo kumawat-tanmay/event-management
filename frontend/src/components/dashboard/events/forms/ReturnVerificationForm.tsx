@@ -41,22 +41,22 @@ export function ReturnVerificationForm() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (booking?.assignedSupervisor) {
+    if (booking?.assignedSupervisor && !supervisorName) {
       const sup = booking.assignedSupervisor;
       const name = typeof sup === 'object' ? sup.name : sup;
       setSupervisorName(name || '');
     }
-  }, [booking]);
+  }, [booking, supervisorName]);
 
   useEffect(() => {
-    if (warehouses && warehouses.length > 0) {
+    if (warehouses && warehouses.length > 0 && !warehouseId) {
       const defaultWh = warehouses.find((w: any) => w.isDefault) || warehouses[0];
       setWarehouseId(defaultWh?._id || '');
     }
-  }, [warehouses]);
+  }, [warehouses, warehouseId]);
 
   useEffect(() => {
-    if (booking && booking.items) {
+    if (booking && booking.items && items.length === 0) {
       setItems(
         booking.items.map((i: any) => {
           const qty = i.quantity || i.qty || 1;
@@ -72,7 +72,7 @@ export function ReturnVerificationForm() {
         })
       );
     }
-  }, [booking]);
+  }, [booking, items.length]);
 
   const updateItemQty = (index: number, field: string, val: number) => {
     const cleanVal = Math.max(0, val);

@@ -28,11 +28,11 @@ export const defaultSEO = {
     email: "info@krishnatent.com",
 
     // ================= IMAGES =================
-    image: `${BASE_URL}/logo/og-image1.png`,
+    image: `/logo/og-image1.png`,
     imageAlt: "Krishna Tent & Events ERP",
     imageType: "image/png",
 
-    ogImage: `${BASE_URL}/logo/og-image1.png`,
+    ogImage: `/logo/og-image1.png`,
     ogImageAlt: "Krishna Tent & Events ERP - Event Management System",
     ogImageType: "image/png",
 
@@ -138,8 +138,12 @@ export function buildMetadata(overrides: {
         ? `${BASE_URL}${seo.url.startsWith('/') ? seo.url : '/' + seo.url}`
         : BASE_URL;
 
-    const ogImage = seo.ogImage || defaultSEO.ogImage;
+    const rawOgImage = seo.ogImage || defaultSEO.ogImage;
     const ogImageAlt = seo.ogImageAlt || defaultSEO.ogImageAlt;
+
+    const fullOgImageUrl = rawOgImage.startsWith('http')
+        ? rawOgImage
+        : `${BASE_URL}${rawOgImage.startsWith('/') ? rawOgImage : '/' + rawOgImage}`;
 
     const finalTitle = seo.title.includes('Krishna Tent & Events')
         ? seo.title
@@ -176,7 +180,7 @@ export function buildMetadata(overrides: {
             siteName: defaultSEO.siteName,
             images: [
                 {
-                    url: ogImage,
+                    url: fullOgImageUrl,
                     width: 1200,
                     height: 630,
                     alt: ogImageAlt,
@@ -192,7 +196,7 @@ export function buildMetadata(overrides: {
             card: 'summary_large_image',
             title: finalTitle,
             description: seo.description,
-            images: [ogImage],
+            images: [fullOgImageUrl],
             creator: defaultSEO.twitterCreator,
             site: defaultSEO.twitterSite,
         },

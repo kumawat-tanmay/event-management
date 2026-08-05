@@ -8,11 +8,14 @@ export interface Invoice {
     bookingId: string;
     eventTitle: string;
     eventStartDate: string;
+    eventEndDate: string;
     grandTotal: number;
     balanceAmount: number;
     subtotal: number;
     taxAmount: number;
     taxRate: number;
+    transportCharges?: number;
+    labourCharges?: number;
     items?: any[];
     customer?: {
       _id: string;

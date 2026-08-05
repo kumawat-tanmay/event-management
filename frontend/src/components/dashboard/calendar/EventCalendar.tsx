@@ -11,6 +11,7 @@ import { cn } from '@/utils/cn';
 import { ActionGuard } from '@/components/auth/ActionGuard';
 import { crmService } from '@/lib/services/crm.services';
 import { bookingService } from '@/lib/services/booking.services';
+import { useTranslation } from 'react-i18next';
 
 interface CalendarEvent {
   id: string;
@@ -96,6 +97,7 @@ const DAYS_OF_WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 export function EventCalendar() {
+  const { t } = useTranslation();
   const router = useRouter();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
@@ -277,8 +279,8 @@ export function EventCalendar() {
     return (
       <div className="flex flex-col h-full space-y-6">
         <PageHeader 
-          title="Event Calendar" 
-          description="Track and manage all your upcoming weddings, corporate events, and bookings."
+          title={t('calendar.title')} 
+          description={t('calendar.description')}
         />
         <Card className="flex-1 overflow-hidden">
           <div className="flex flex-col items-center justify-center py-20 gap-5">
@@ -305,18 +307,18 @@ export function EventCalendar() {
   return (
     <div className="flex flex-col h-full space-y-6">
       <PageHeader 
-        title="Event Calendar" 
-        description="Track and manage all your upcoming weddings, corporate events, and bookings."
+        title={t('calendar.title')} 
+        description={t('calendar.description')}
       />
       <div className="flex flex-wrap items-center gap-y-2 gap-x-3 sm:gap-x-6 bg-background/80 border border-border/50 rounded-full px-4 sm:px-6 py-2.5 sm:py-3 text-[10px] sm:text-xs font-bold shadow-md backdrop-blur-md">
-        <span className="text-muted-foreground/70 uppercase tracking-[0.15em] text-[8px] sm:text-[9px] font-extrabold mr-0.5">Legend</span>
+        <span className="text-muted-foreground/70 uppercase tracking-[0.15em] text-[8px] sm:text-[9px] font-extrabold mr-0.5">{t('calendar.legend')}</span>
         <div className="flex items-center gap-1.5 sm:gap-2">
           <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-emerald-500 ring-2 sm:ring-[3px] ring-emerald-500/20"></span>
-          <span className="text-foreground/70">Confirmed</span>
+          <span className="text-foreground/70">{t('calendar.confirmed')}</span>
         </div>
         <div className="flex items-center gap-1.5 sm:gap-2">
           <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-amber-500 ring-2 sm:ring-[3px] ring-amber-500/20"></span>
-          <span className="text-foreground/70">Scheduled</span>
+          <span className="text-foreground/70">{t('calendar.scheduled')}</span>
         </div>
         <div className="flex items-center gap-1.5 sm:gap-2">
           <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-rose-500 ring-2 sm:ring-[3px] ring-rose-500/20"></span>

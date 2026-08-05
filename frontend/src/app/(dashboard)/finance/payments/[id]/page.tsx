@@ -1,1 +1,5 @@
-export default function Page() { return <div className="p-8 flex items-center justify-center h-screen text-muted-foreground">Page Coming Soon...</div>; }
+import { PaymentDetailView } from '@/components/dashboard/finance/payments/PaymentDetailView';
+
+export default function PaymentDetailPage() {
+  return <PaymentDetailView />;
+}

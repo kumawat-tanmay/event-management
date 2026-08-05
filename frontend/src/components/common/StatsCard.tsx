@@ -4,7 +4,7 @@ import { cn } from '@/utils/cn';
 
 interface StatsCardProps {
   title: string;
-  value: string | number;
+  value: React.ReactNode;
   subtitle?: string;
   icon: LucideIcon;
   colorTheme?: 'primary' | 'secondary' | 'success' | 'warning' | 'error' | 'blue' | 'yellow' | 'purple' | 'green' | 'orange';

@@ -1,26 +1,23 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import { Plus, Download, Wallet, CreditCard, RefreshCw, Eye, Search, AlertCircle, Trash2 } from 'lucide-react';
 import { DataTable } from '@/components/common/DataTable';
 import { Button } from '@/components/common/Button';
 import { StatsCard } from '@/components/common/StatsCard';
-import { Modal } from '@/components/common/Modal';
 import { ConfirmModal } from '@/components/common/ConfirmModal';
 import { paymentService, Payment } from '@/lib/services/payment.services';
 import { ActionGuard } from '@/components/auth/ActionGuard';
-import { PaymentForm } from './PaymentForm';
 import toast from 'react-hot-toast';
 
 export function PaymentsView() {
   const { t } = useTranslation();
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
-  const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [paymentToDelete, setPaymentToDelete] = useState<string | null>(null);
 
@@ -140,10 +137,7 @@ export function PaymentsView() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => {
-              setSelectedPayment(row);
-              setIsDetailOpen(true);
-            }}
+            onClick={() => router.push(`/finance/payments/${row._id}`)}
             className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
           >
             <Eye className="w-4 h-4" />
@@ -170,8 +164,8 @@ export function PaymentsView() {
     <div className="flex flex-col p-4 md:p-6 lg:p-8 w-full">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h2 className="text-3xl font-black text-foreground tracking-tight mb-1">Payments Ledger</h2>
-          <p className="text-sm font-medium text-muted-foreground">Track booking advances, settlements, refunds, and cash inflows.</p>
+          <h2 className="text-3xl font-black text-foreground tracking-tight mb-1">{t('finance.payments.title')}</h2>
+          <p className="text-sm font-medium text-muted-foreground">{t('finance.payments.subtitle')}</p>
         </div>
         <div className="flex gap-3 w-full sm:w-auto">
           <Button variant="outline" onClick={fetchPayments} className="flex items-center justify-center gap-2">
@@ -179,9 +173,13 @@ export function PaymentsView() {
             Refresh
           </Button>
           <ActionGuard permission="finance.create">
-            <Button variant="primary" onClick={() => setIsFormOpen(true)} className="flex items-center justify-center gap-2">
+            <Button 
+              variant="primary" 
+              onClick={() => router.push('/finance/payments/new')} 
+              className="flex items-center justify-center gap-2"
+            >
               <Plus className="w-4 h-4" />
-              Record Payment
+              {t('finance.payments.recordPayment')}
             </Button>
           </ActionGuard>
         </div>
@@ -189,7 +187,7 @@ export function PaymentsView() {
 
       {/* KPI stats row */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <StatsCard title="Total Payments" value={`₹ ${totalPayments.toLocaleString()}`} icon={Wallet} colorTheme="success" />
+        <StatsCard title={t('finance.payments.totalPayments')} value={`₹ ${totalPayments.toLocaleString()}`} icon={Wallet} colorTheme="success" />
         <StatsCard title="Cash Balance" value={`₹ ${cashPayments.toLocaleString()}`} icon={CreditCard} colorTheme="warning" />
         <StatsCard title="Bank / UPI Balance" value={`₹ ${bankPayments.toLocaleString()}`} icon={CreditCard} colorTheme="blue" />
       </div>
@@ -200,7 +198,7 @@ export function PaymentsView() {
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Search payments by booking code, customer name or notes..."
+            placeholder={t('finance.payments.search')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-9 pr-4 py-2 bg-background border border-input rounded-xl text-sm focus:ring-2 focus:ring-primary outline-none"
@@ -220,79 +218,6 @@ export function PaymentsView() {
         />
       )}
 
-      {/* Record Payment Form Modal */}
-      {isFormOpen && (
-        <Modal
-          isOpen={isFormOpen}
-          onClose={() => setIsFormOpen(false)}
-          title="Record New Payment"
-          size="lg"
-        >
-          <PaymentForm
-            onClose={() => setIsFormOpen(false)}
-            onSuccess={() => {
-              setIsFormOpen(false);
-              fetchPayments();
-            }}
-          />
-        </Modal>
-      )}
-
-      {/* Detail View Modal */}
-      {isDetailOpen && selectedPayment && (
-        <Modal
-          isOpen={isDetailOpen}
-          onClose={() => setIsDetailOpen(false)}
-          title="Payment Transaction Details"
-          size="md"
-        >
-          <div className="space-y-4 pt-4">
-            <div className="grid grid-cols-2 gap-4 border-b border-border pb-4">
-              <div>
-                <p className="text-xs text-muted-foreground">Transaction Date</p>
-                <p className="text-sm font-bold">{new Date(selectedPayment.transactionDate).toLocaleString()}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Amount</p>
-                <p className="text-sm font-bold text-success">₹ {selectedPayment.amount.toLocaleString()}</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4 border-b border-border pb-4">
-              <div>
-                <p className="text-xs text-muted-foreground">Payment Type</p>
-                <p className="text-sm font-bold capitalize">{selectedPayment.paymentType}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Payment Mode</p>
-                <p className="text-sm font-bold">{selectedPayment.paymentMode}</p>
-              </div>
-            </div>
-            {selectedPayment.transactionId && (
-              <div className="border-b border-border pb-4">
-                <p className="text-xs text-muted-foreground">Transaction ID / Reference</p>
-                <p className="text-sm font-bold">{selectedPayment.transactionId}</p>
-              </div>
-            )}
-            <div className="border-b border-border pb-4">
-              <p className="text-xs text-muted-foreground">Associated Booking</p>
-              <p className="text-sm font-bold">{selectedPayment.bookingId?.bookingId ? `${selectedPayment.bookingId.bookingId} - ${selectedPayment.bookingId.eventTitle}` : 'General / Direct'}</p>
-            </div>
-            <div className="border-b border-border pb-4">
-              <p className="text-xs text-muted-foreground">Customer</p>
-              <p className="text-sm font-bold">{selectedPayment.customerId?.name || '—'}</p>
-            </div>
-            {selectedPayment.notes && (
-              <div>
-                <p className="text-xs text-muted-foreground">Remarks / Notes</p>
-                <p className="text-sm text-foreground">{selectedPayment.notes}</p>
-              </div>
-            )}
-            <div className="flex justify-end pt-4">
-              <Button variant="outline" onClick={() => setIsDetailOpen(false)}>Close</Button>
-            </div>
-          </div>
-        </Modal>
-      )}
       {/* Confirm Delete Transaction Modal */}
       {isDeleteOpen && (
         <ConfirmModal

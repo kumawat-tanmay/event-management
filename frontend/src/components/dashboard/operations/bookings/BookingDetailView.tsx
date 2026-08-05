@@ -4,14 +4,16 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, useParams } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
-import { Calendar, MapPin, Phone, Mail, ArrowLeft, Edit, FileText, Printer, ShieldAlert, CreditCard, MessageSquare } from 'lucide-react';
+import { Calendar, MapPin, Phone, Mail, ArrowLeft, Edit, FileText, Printer, ShieldAlert, CreditCard, MessageSquare, Loader2, Plus } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { bookingService, Booking } from '@/lib/services/booking.services';
+import { invoiceService } from '@/lib/services/invoice.services';
 import { ActionGuard } from '@/components/auth/ActionGuard';
 import { generatePdfFromHtml, sharePdfViaWhatsApp } from '@/utils/pdfShare';
 import { getBookingAgreementPdfHtml } from '@/utils/pdfTemplates';
+import useSWR from 'swr';
 
 export function BookingDetailView() {
   const { t } = useTranslation();
@@ -19,6 +21,14 @@ export function BookingDetailView() {
   const { id } = useParams();
   const [loading, setLoading] = useState(true);
   const [booking, setBooking] = useState<Booking | null>(null);
+
+  // Fetch invoices for this booking to check if one exists
+  const { data: invoices, isLoading: invoiceLoading } = useSWR(
+    booking?._id ? `booking-invoice-${booking._id}` : null,
+    () => invoiceService.getInvoices({ bookingId: booking?._id })
+  );
+
+  const existingInvoice = invoices?.[0];
 
   useEffect(() => {
     const fetchBooking = async () => {
@@ -106,6 +116,29 @@ Thank you for choosing Krishna Tent & Events!
         </div>
 
         <div className="flex flex-wrap gap-2.5">
+          {invoiceLoading ? (
+            <Button variant="outline" disabled className="flex items-center gap-2 border-border">
+              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+              <span>Checking Invoice...</span>
+            </Button>
+          ) : existingInvoice ? (
+            <Link href={`/finance/invoices/${existingInvoice._id}`}>
+              <Button variant="outline" className="flex items-center gap-2 border-primary/30 text-primary hover:bg-primary/5">
+                <FileText className="w-4 h-4" />
+                <span>View Tax Invoice</span>
+              </Button>
+            </Link>
+          ) : (
+            <ActionGuard permission="finance.create">
+              <Link href={`/finance/invoices/new?bookingId=${booking._id}`}>
+                <Button variant="outline" className="flex items-center gap-2 border-primary/30 text-primary hover:bg-primary/5">
+                  <Plus className="w-4 h-4" />
+                  <span>Generate Tax Invoice</span>
+                </Button>
+              </Link>
+            </ActionGuard>
+          )}
+
           <ActionGuard permission="bookings.update">
             <Link href={`/operations/bookings/${booking._id}/edit`}>
               <Button variant="outline" className="flex items-center gap-2">

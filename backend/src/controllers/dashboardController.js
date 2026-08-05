@@ -25,9 +25,11 @@ exports.getDashboardStats = async (req, res) => {
       todaysEventsCount,
       todaysDispatchesCount,
       totalStaffCount,
-      activeBookings,
-      allItems,
-      allWarehouses
+      allWarehouses,
+      pendingPaymentsAgg,
+      stockAgg,
+      warehouseStockAgg,
+      reservationAgg
     ] = await Promise.all([
       Booking.countDocuments({
         isDeleted: false,
@@ -42,35 +44,44 @@ exports.getDashboardStats = async (req, res) => {
         ]
       }),
       Staff.countDocuments({ isDeleted: false, status: 'Active' }),
-      Booking.find({ isDeleted: false, status: { $ne: 'Cancelled' } }),
-      Item.find({ isDeleted: false, isActive: true }),
-      Warehouse.find({ isDeleted: false })
+      Warehouse.find({ isDeleted: false }).lean(),
+      Booking.aggregate([
+        { $match: { isDeleted: false, status: { $ne: 'Cancelled' } } },
+        { $group: { _id: null, totalBalance: { $sum: '$balanceAmount' } } }
+      ]),
+      Item.aggregate([
+        { $match: { isDeleted: false, isActive: true } },
+        { $group: {
+            _id: null,
+            totalAvailable: { $sum: '$availableStock' },
+            totalDispatched: { $sum: '$dispatchedStock' },
+            totalDamaged: { $sum: '$damagedStock' }
+          }
+        }
+      ]),
+      Item.aggregate([
+        { $match: { isDeleted: false, isActive: true } },
+        { $unwind: '$warehouseStock' },
+        { $group: {
+            _id: '$warehouseStock.warehouse',
+            available: { $sum: '$warehouseStock.quantity' },
+            atSite: { $sum: '$warehouseStock.dispatched' },
+            damaged: { $sum: '$warehouseStock.damaged' }
+          }
+        }
+      ]),
+      Reservation.aggregate([
+        { $match: { isDeleted: false, status: { $in: ['Pending', 'Auto-Split', 'Locked'] } } },
+        { $unwind: '$items' },
+        { $group: { _id: null, totalReserved: { $sum: '$items.lockedQty' } } }
+      ])
     ]);
 
-    const pendingPaymentsTotal = activeBookings.reduce((sum, b) => sum + (b.balanceAmount !== undefined ? b.balanceAmount : (b.balanceDue !== undefined ? b.balanceDue : (b.grandTotal - (b.advancePaid || 0)))), 0);
-
-    // Compute global stock aggregates from Item model
-    let totalAvailable = 0;
-    let totalDispatched = 0;
-    let totalDamaged = 0;
-    let totalReserved = 0;
-
-    allItems.forEach(item => {
-      totalAvailable += item.availableStock || 0;
-      totalDispatched += item.dispatchedStock || 0;
-      totalDamaged += item.damagedStock || 0;
-    });
-
-    // Count reserved stock from active reservations
-    const activeReservations = await Reservation.find({
-      isDeleted: false,
-      status: { $in: ['Pending', 'Auto-Split', 'Locked'] }
-    });
-    activeReservations.forEach(r => {
-      r.items.forEach(ri => {
-        totalReserved += ri.lockedQty || 0;
-      });
-    });
+    const pendingPaymentsTotal = pendingPaymentsAgg[0]?.totalBalance || 0;
+    const totalAvailable = stockAgg[0]?.totalAvailable || 0;
+    const totalDispatched = stockAgg[0]?.totalDispatched || 0;
+    const totalDamaged = stockAgg[0]?.totalDamaged || 0;
+    const totalReserved = reservationAgg[0]?.totalReserved || 0;
 
     // Pending returns: dispatches that are Delivered or In-Transit (need return)
     const pendingReturnDispatches = await Dispatch.find({
@@ -90,7 +101,7 @@ exports.getDashboardStats = async (req, res) => {
     };
 
     // ──────────────────────────────────────────────────────────────
-    // 2. Growth Analysis - Revenue vs Expenses (existing, optimized)
+    // 2. Growth Analysis - Revenue vs Expenses (Monthly, Weekly, Daily)
     // ──────────────────────────────────────────────────────────────
     const sixMonthsAgo = new Date();
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
@@ -98,43 +109,119 @@ exports.getDashboardStats = async (req, res) => {
     sixMonthsAgo.setHours(0, 0, 0, 0);
 
     const [payments, expenses] = await Promise.all([
-      Payment.find({ isDeleted: false, transactionDate: { $gte: sixMonthsAgo } }),
-      Expense.find({ isDeleted: false, date: { $gte: sixMonthsAgo } })
+      Payment.find({ isDeleted: false, transactionDate: { $gte: sixMonthsAgo } }).lean(),
+      Expense.find({ isDeleted: false, date: { $gte: sixMonthsAgo } }).lean()
     ]);
 
     const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const monthlyData = {};
-    
+
+    // A. Monthly Buckets (last 6 months)
+    const monthlyBuckets = [];
     for (let i = 5; i >= 0; i--) {
       const d = new Date();
       d.setMonth(d.getMonth() - i);
-      const monthKey = monthNames[d.getMonth()] + ' ' + d.getFullYear();
-      monthlyData[monthKey] = { date: monthKey, revenue: 0, expenses: 0 };
+      const year = d.getFullYear();
+      const monthIdx = d.getMonth();
+      monthlyBuckets.push({
+        label: monthNames[monthIdx],
+        year,
+        monthIdx,
+        revenue: 0,
+        expenses: 0
+      });
     }
 
+    // B. Weekly Buckets (last 6 weeks)
+    const now = new Date();
+    const weeklyBuckets = [];
+    for (let i = 5; i >= 0; i--) {
+      const endWin = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (i * 7), 23, 59, 59, 999);
+      const startWin = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (i * 7) - 6, 0, 0, 0, 0);
+      weeklyBuckets.push({
+        label: `Wk ${6 - i}`,
+        startWin,
+        endWin,
+        revenue: 0,
+        expenses: 0
+      });
+    }
+
+    // C. Daily Buckets (last 7 days with Day Names)
+    const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const dailyBuckets = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
+      const dayEnd = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+      const dayName = dayNames[d.getDay()];
+      dailyBuckets.push({
+        label: `${dayName} ${String(d.getDate()).padStart(2, '0')}`,
+        dayStart,
+        dayEnd,
+        revenue: 0,
+        expenses: 0
+      });
+    }
+
+    // Aggregate Payments
     payments.forEach(p => {
       if (!p.transactionDate) return;
-      const d = new Date(p.transactionDate);
-      const monthKey = monthNames[d.getMonth()] + ' ' + d.getFullYear();
-      if (monthlyData[monthKey]) {
-        if (p.paymentType === 'refund') {
-          monthlyData[monthKey].revenue -= p.amount;
-        } else if (p.paymentType !== 'vendor_payment') {
-          monthlyData[monthKey].revenue += p.amount;
+      const pDate = new Date(p.transactionDate);
+      const amt = p.amount || 0;
+      if (p.paymentType === 'vendor_payment') return;
+
+      const revChange = p.paymentType === 'refund' ? -amt : amt;
+
+      monthlyBuckets.forEach(mb => {
+        if (pDate.getFullYear() === mb.year && pDate.getMonth() === mb.monthIdx) {
+          mb.revenue += revChange;
         }
-      }
+      });
+
+      weeklyBuckets.forEach(wb => {
+        if (pDate >= wb.startWin && pDate <= wb.endWin) {
+          wb.revenue += revChange;
+        }
+      });
+
+      dailyBuckets.forEach(db => {
+        if (pDate >= db.dayStart && pDate <= db.dayEnd) {
+          db.revenue += revChange;
+        }
+      });
     });
 
+    // Aggregate Expenses
     expenses.forEach(e => {
       if (!e.date) return;
-      const d = new Date(e.date);
-      const monthKey = monthNames[d.getMonth()] + ' ' + d.getFullYear();
-      if (monthlyData[monthKey]) {
-        monthlyData[monthKey].expenses += e.amount;
-      }
+      const eDate = new Date(e.date);
+      const amt = e.amount || 0;
+
+      monthlyBuckets.forEach(mb => {
+        if (eDate.getFullYear() === mb.year && eDate.getMonth() === mb.monthIdx) {
+          mb.expenses += amt;
+        }
+      });
+
+      weeklyBuckets.forEach(wb => {
+        if (eDate >= wb.startWin && eDate <= wb.endWin) {
+          wb.expenses += amt;
+        }
+      });
+
+      dailyBuckets.forEach(db => {
+        if (eDate >= db.dayStart && eDate <= db.dayEnd) {
+          db.expenses += amt;
+        }
+      });
     });
 
-    const growthAnalysis = Object.values(monthlyData);
+    const growthAnalysis = {
+      monthly: monthlyBuckets.map(b => ({ date: b.label, revenue: Math.max(0, b.revenue), expenses: b.expenses })),
+      weekly: weeklyBuckets.map(b => ({ date: b.label, revenue: Math.max(0, b.revenue), expenses: b.expenses })),
+      daily: dailyBuckets.map(b => ({ date: b.label, revenue: Math.max(0, b.revenue), expenses: b.expenses }))
+    };
 
     // ──────────────────────────────────────────────────────────────
     // 3. Category Breakdown for Expenses Donut (existing)
@@ -167,30 +254,14 @@ exports.getDashboardStats = async (req, res) => {
     // 5. Warehouse Stock Summary (NEW)
     // ──────────────────────────────────────────────────────────────
     const warehouseSummary = allWarehouses.map(wh => {
-      let available = 0;
-      let reserved = 0;
-      let atSite = 0;
-      let damaged = 0;
-
-      allItems.forEach(item => {
-        if (item.warehouseStock && item.warehouseStock.length > 0) {
-          item.warehouseStock.forEach(ws => {
-            if (ws.warehouse && ws.warehouse.toString() === wh._id.toString()) {
-              available += ws.quantity || 0;
-              atSite += ws.dispatched || 0;
-              damaged += ws.damaged || 0;
-            }
-          });
-        }
-      });
-
+      const stockInfo = warehouseStockAgg.find(s => s._id.toString() === wh._id.toString());
       return {
         _id: wh._id,
         name: wh.name,
-        available,
+        available: stockInfo ? (stockInfo.available || 0) : 0,
         reserved: 0, // reservations are per-booking, not per-warehouse in current schema
-        atSite,
-        damaged
+        atSite: stockInfo ? (stockInfo.atSite || 0) : 0,
+        damaged: stockInfo ? (stockInfo.damaged || 0) : 0
       };
     });
 

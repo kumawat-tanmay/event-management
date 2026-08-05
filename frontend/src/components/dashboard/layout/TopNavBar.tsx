@@ -102,11 +102,11 @@ export function TopNavBar({ onMenuClick }: TopNavBarProps) {
             >
               <Link href="/crm/customers/new">
                 <button
-                  className="relative overflow-hidden rounded-xl bg-primary text-white font-extrabold text-xs tracking-wider flex items-center gap-2 shadow-lg shadow-primary/30 cursor-pointer border border-white/10 px-3 py-2 sm:px-4 sm:py-2.5"
+                  className="relative overflow-hidden rounded-xl bg-primary text-white font-extrabold text-xs tracking-wider flex items-center gap-2 shadow-lg shadow-primary/30 cursor-pointer border border-white/20 px-3.5 py-2 sm:px-4 sm:py-2.5"
                 >
                   <div
-                    className="absolute inset-0 w-[50%] h-full bg-gradient-to-r from-transparent via-white/40 to-transparent -skew-x-12 animate-shimmer"
-                    style={{ zIndex: 0 }}
+                    className="absolute inset-0 w-[60%] h-full bg-gradient-to-r from-transparent via-white/50 to-transparent animate-shimmer pointer-events-none"
+                    style={{ zIndex: 1 }}
                   />
                   <span className="relative z-10 flex items-center gap-2">
                     <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform duration-300" />

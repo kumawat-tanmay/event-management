@@ -8,7 +8,10 @@ import { StatsCard } from '@/components/common/StatsCard';
 import { financeService, LedgerItem, BankbookSummary } from '@/lib/services/finance.services';
 import toast from 'react-hot-toast';
 
+import { useTranslation } from 'react-i18next';
+
 export function BankbookView() {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [ledger, setLedger] = useState<LedgerItem[]>([]);
   const [summary, setSummary] = useState<BankbookSummary>({
@@ -26,7 +29,7 @@ export function BankbookView() {
       setSummary(data.summary);
     } catch (err: any) {
       console.error('Error loading bankbook:', err);
-      toast.error('Failed to load bankbook records');
+      toast.error(t('finance.bankbook.noTransactions'));
     } finally {
       setLoading(false);
     }
@@ -46,7 +49,7 @@ export function BankbookView() {
 
   const columns = [
     {
-      header: 'Date',
+      header: t('finance.bankbook.date'),
       accessorKey: 'date',
       cell: (row: LedgerItem) => new Date(row.date).toLocaleDateString()
     },
@@ -69,7 +72,7 @@ export function BankbookView() {
       )
     },
     {
-      header: 'Payment Mode',
+      header: t('finance.bankbook.mode'),
       accessorKey: 'mode',
       cell: (row: LedgerItem) => (
         <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary">
@@ -78,23 +81,23 @@ export function BankbookView() {
       )
     },
     {
-      header: 'Transaction ID',
+      header: t('finance.bankbook.transactionId'),
       accessorKey: 'transactionId',
       cell: (row: LedgerItem) => <span className="text-xs font-mono">{row.transactionId || '—'}</span>
     },
     {
-      header: 'Debit (Bank In)',
+      header: t('finance.bankbook.deposit'),
       accessorKey: 'amount',
-      cell: (row: LedgerItem) => row.type === 'receipt' ? (
+      cell: (row: LedgerItem) => (row.type === 'receipt' && row.source !== 'Booking Refund') ? (
         <span className="font-bold text-success">
           +₹{row.amount.toLocaleString()}
         </span>
       ) : '—'
     },
     {
-      header: 'Credit (Bank Out)',
+      header: t('finance.bankbook.withdrawal'),
       accessorKey: 'amount',
-      cell: (row: LedgerItem) => row.type === 'payment' ? (
+      cell: (row: LedgerItem) => (row.type === 'payment' || row.source === 'Booking Refund') ? (
         <span className="font-bold text-error">
           -₹{row.amount.toLocaleString()}
         </span>
@@ -115,8 +118,8 @@ export function BankbookView() {
     <div className="flex flex-col p-4 md:p-6 lg:p-8 w-full">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h2 className="text-3xl font-black text-foreground tracking-tight mb-1">Bank Book Ledger</h2>
-          <p className="text-sm font-medium text-muted-foreground">Manage Net Banking, UPI, and Cheque clearances.</p>
+          <h2 className="text-3xl font-black text-foreground tracking-tight mb-1">{t('finance.bankbook.title')}</h2>
+          <p className="text-sm font-medium text-muted-foreground">{t('finance.bankbook.subtitle')}</p>
         </div>
         <div className="flex gap-3 w-full sm:w-auto">
           <Button variant="outline" onClick={fetchBankbook} className="flex items-center justify-center gap-2">
@@ -128,9 +131,9 @@ export function BankbookView() {
 
       {/* Bankbook balance KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <StatsCard title="Total Bank Receipts" value={`₹ ${summary.totalBankIn.toLocaleString()}`} icon={Wallet} colorTheme="success" />
-        <StatsCard title="Total Bank Outflow" value={`₹ ${summary.totalBankOut.toLocaleString()}`} icon={Wallet} colorTheme="error" />
-        <StatsCard title="Current Bank Balance" value={`₹ ${summary.currentBalance.toLocaleString()}`} icon={CreditCard} colorTheme="blue" />
+        <StatsCard title={t('finance.bankbook.deposit')} value={`₹ ${summary.totalBankIn.toLocaleString()}`} icon={Wallet} colorTheme="success" />
+        <StatsCard title={t('finance.bankbook.withdrawal')} value={`₹ ${summary.totalBankOut.toLocaleString()}`} icon={Wallet} colorTheme="error" />
+        <StatsCard title={t('finance.bankbook.balance')} value={`₹ ${summary.currentBalance.toLocaleString()}`} icon={CreditCard} colorTheme="blue" />
       </div>
 
       {/* Filter and Search */}
@@ -139,7 +142,7 @@ export function BankbookView() {
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Search bank transactions..."
+            placeholder={t('finance.bankbook.search')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-9 pr-4 py-2 bg-background border border-input rounded-xl text-sm focus:ring-2 focus:ring-primary outline-none"

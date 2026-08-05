@@ -4,11 +4,13 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import {
-  ShieldCheck, MapPin, Clock, CheckCircle2, AlertTriangle, ArrowRight, RefreshCw
+  ShieldCheck, MapPin, CalendarDays, CheckCircle2, AlertTriangle, ArrowRight, RefreshCw
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/common/Card';
+import { Card, CardContent } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
 import { StatsCard } from '@/components/common/StatsCard';
+import { DataTable } from '@/components/common/DataTable';
+import { StatusBadge } from '@/components/common/StatusBadge';
 import useSWR from 'swr';
 import { bookingService } from '@/lib/services/booking.services';
 
@@ -21,6 +23,80 @@ export function VerificationForm() {
 
   const activeBookings = bookings.filter((b: any) => b.status === 'Confirmed' || b.status === 'InProgress' || b.status === 'Stock Locked');
 
+  const columns = [
+    {
+      header: 'Event Details',
+      accessorKey: 'eventTitle',
+      cell: (row: any) => (
+        <div>
+          <p className="font-bold text-foreground text-sm">{row.eventTitle || 'Event Setup'}</p>
+          <div className="flex items-center gap-2 mt-1">
+            <span className="font-mono text-xs font-bold text-primary">{row.bookingId || row.bookingNumber}</span>
+            <span className="text-muted-foreground">•</span>
+            <span className="text-xs text-muted-foreground flex items-center">
+              <MapPin className="w-3.5 h-3.5 mr-1 shrink-0 text-muted-foreground" />
+              <span className="truncate max-w-[200px]">{row.venueAddress || 'Venue Site'}</span>
+            </span>
+          </div>
+        </div>
+      )
+    },
+    {
+      header: 'Client / Party',
+      accessorKey: 'customer.name',
+      cell: (row: any) => (
+        <div>
+          <p className="font-bold text-foreground text-sm">{typeof row.customer === 'object' ? row.customer?.name : 'Customer'}</p>
+          <p className="text-xs text-muted-foreground">{row.eventType || 'Event'}</p>
+        </div>
+      )
+    },
+    {
+      header: 'Event Dates',
+      accessorKey: 'eventStartDate',
+      cell: (row: any) => {
+        const formatDate = (dateStr: any) => {
+          if (!dateStr) return '—';
+          const d = new Date(dateStr);
+          return isNaN(d.getTime()) ? '—' : d.toISOString().split('T')[0];
+        };
+        return (
+          <div className="flex items-center text-xs text-foreground font-semibold">
+            <CalendarDays className="w-3.5 h-3.5 mr-1.5 text-muted-foreground shrink-0" />
+            {formatDate(row.eventStartDate)} to {formatDate(row.eventEndDate)}
+          </div>
+        );
+      }
+    },
+    {
+      header: 'Status',
+      accessorKey: 'status',
+      cell: (row: any) => {
+        let badgeType = 'Pending';
+        if (row.status === 'Confirmed' || row.status === 'InProgress') badgeType = 'In Progress';
+        if (row.status === 'Returned' || row.status === 'Completed') badgeType = 'Confirmed';
+        return <StatusBadge status={badgeType} customText={row.status} />;
+      }
+    },
+    {
+      header: 'Actions',
+      accessorKey: 'actions',
+      cell: (row: any) => (
+        <div className="flex items-center justify-end">
+          <Button
+            variant="primary"
+            size="sm"
+            className="bg-[#5C3A21] hover:bg-[#6B4627] text-white font-bold flex items-center gap-1.5"
+            onClick={() => router.push(`/events/verification/${row._id}`)}
+          >
+            <span>Verify Site</span>
+            <ArrowRight className="w-4 h-4" />
+          </Button>
+        </div>
+      )
+    }
+  ];
+
   if (isLoading) return <div className="p-8 text-center text-muted-foreground animate-pulse">{t('crm.loading', 'Loading...')}</div>;
 
   return (
@@ -28,7 +104,7 @@ export function VerificationForm() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
         <div>
-          <h2 className="text-3xl font-black text-foreground tracking-tight mb-1">{t('events.siteVerification')}</h2>
+          <h2 className="text-3xl font-black text-foreground tracking-tight mb-1">Site Verification & Photos</h2>
           <p className="text-sm font-medium text-muted-foreground">Verify site readiness, stage dimensions, power setup, and client photo proofs.</p>
         </div>
         <Button variant="outline" onClick={() => mutate()} className="flex items-center gap-2">
@@ -62,9 +138,11 @@ export function VerificationForm() {
         />
       </div>
 
-      {/* Grid Layout for Verification Cards */}
+      {/* Verification List Table */}
       <div className="pt-2">
-        <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-4">Active Venue Setup Sites</h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Active Venue Setup Sites</h3>
+        </div>
 
         {activeBookings.length === 0 ? (
           <div className="p-12 text-center text-muted-foreground bg-card rounded-2xl border border-border">
@@ -73,52 +151,12 @@ export function VerificationForm() {
             <p className="text-xs mt-1">Confirmed event bookings will automatically show up here for pre-event inspection.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {activeBookings.map((bk: any) => (
-              <Card key={bk._id} className="border-border shadow-sm flex flex-col hover:border-primary/50 transition-colors bg-card">
-                <CardHeader className="border-b border-border bg-muted/10 pb-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-mono font-bold text-primary">{bk.bookingId || bk.bookingNumber}</span>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider bg-warning/10 text-warning">
-                      {bk.status}
-                    </span>
-                  </div>
-                  <CardTitle className="text-base font-bold leading-tight">
-                    {bk.eventTitle || 'Event Setup'}
-                  </CardTitle>
-                </CardHeader>
-
-                <CardContent className="pt-4 flex-1 space-y-4">
-                  <div className="flex items-start gap-3">
-                    <MapPin className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
-                    <div>
-                      <p className="text-sm font-medium text-foreground">{bk.venueAddress || 'Venue Location'}</p>
-                      <p className="text-xs text-muted-foreground">Venue Address</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <Clock className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
-                    <div>
-                      <p className="text-sm font-medium text-foreground">
-                        {bk.eventStartDate ? new Date(bk.eventStartDate).toISOString().split('T')[0] : 'Event Date'}
-                      </p>
-                      <p className="text-xs text-muted-foreground">Event Date</p>
-                    </div>
-                  </div>
-                </CardContent>
-
-                <CardFooter className="border-t border-border p-4 bg-muted/5">
-                  <Button
-                    variant="primary"
-                    className="w-full"
-                    onClick={() => router.push(`/events/verification/${bk._id}`)}
-                  >
-                    Verify & Upload Photos
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                  </Button>
-                </CardFooter>
-              </Card>
-            ))}
+          <div className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden">
+            <DataTable
+              columns={columns}
+              data={activeBookings}
+              className="p-0 border-0"
+            />
           </div>
         )}
       </div>

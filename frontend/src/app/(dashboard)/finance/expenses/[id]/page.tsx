@@ -1,1 +1,11 @@
-export default function Page() { return <div className="p-8 flex items-center justify-center h-screen text-muted-foreground">Page Coming Soon...</div>; }
+import React from 'react';
+import { ExpenseDetailView } from '@/components/dashboard/finance/expenses/ExpenseDetailView';
+import { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Expense Details | Krishna Tent & Events',
+};
+
+export default function ExpenseDetailPage() {
+  return <ExpenseDetailView />;
+}

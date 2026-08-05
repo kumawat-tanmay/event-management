@@ -1,19 +1,26 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { ArrowLeft } from 'lucide-react';
 import { bookingService, Booking } from '@/lib/services/booking.services';
 import { hrService, Staff, Vehicle } from '@/lib/services/hr.services';
 import { expenseService, ExpenseInput } from '@/lib/services/expense.services';
 import { Button } from '@/components/common/Button';
 import toast from 'react-hot-toast';
 
+import { useTranslation } from 'react-i18next';
+
 interface ExpenseFormProps {
-  onClose: () => void;
-  onSuccess: () => void;
+  onClose?: () => void;
+  onSuccess?: () => void;
 }
 
 export function ExpenseForm({ onClose, onSuccess }: ExpenseFormProps) {
+  const { t } = useTranslation();
+  const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
+  const isPageMode = !onClose;
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
@@ -72,7 +79,11 @@ export function ExpenseForm({ onClose, onSuccess }: ExpenseFormProps) {
 
       await expenseService.createExpense(payload);
       toast.success('Expense recorded successfully');
-      onSuccess();
+      if (onSuccess) {
+        onSuccess();
+      } else {
+        router.push('/finance/expenses');
+      }
     } catch (err: any) {
       const msg = err.response?.data?.message || err.message || 'Failed to record expense';
       toast.error(msg);
@@ -81,113 +92,78 @@ export function ExpenseForm({ onClose, onSuccess }: ExpenseFormProps) {
     }
   };
 
-  return (
-    <form onSubmit={handleSubmit} className="space-y-6 pt-4 font-sans text-foreground">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+  const formContent = (
+    <form onSubmit={handleSubmit} className="space-y-6 pt-4 font-sans text-foreground w-full">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
         {/* Category */}
         <div className="space-y-2">
-          <label className="text-sm font-bold">Category</label>
+          <label className="text-sm font-bold">{t('finance.expenses.form.category')}</label>
           <select
             name="category"
             value={formData.category}
             onChange={handleChange}
             className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:ring-2 focus:ring-primary outline-none"
+            required
           >
-            <option value="Transport">Transport / Diesel</option>
-            <option value="Material Purchase">Material Purchase</option>
-            <option value="Maintenance">Maintenance & Repairs</option>
-            <option value="Staff Salary">Staff Wages / Salary</option>
-            <option value="Other">Other Expenses</option>
+            <option value="Transport">Transport</option>
+            <option value="Maintenance">Maintenance</option>
+            <option value="Staff Salary">Staff Salary</option>
+            <option value="Vendor Purchase">Vendor Purchase</option>
+            <option value="Other">Other</option>
           </select>
+        </div>
+
+        {/* Amount */}
+        <div className="space-y-2">
+          <label className="text-sm font-bold">{t('finance.expenses.form.amount')}</label>
+          <input
+            type="number"
+            name="amount"
+            value={formData.amount || ''}
+            onChange={handleChange}
+            placeholder="0.00"
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:ring-2 focus:ring-primary outline-none"
+            required
+            min="1"
+          />
         </div>
 
         {/* Payment Mode */}
         <div className="space-y-2">
-          <label className="text-sm font-bold">Payment Mode</label>
+          <label className="text-sm font-bold">{t('finance.expenses.form.paymentMode')}</label>
           <select
             name="paymentMode"
             value={formData.paymentMode}
             onChange={handleChange}
             className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:ring-2 focus:ring-primary outline-none"
+            required
           >
             <option value="Cash">Cash</option>
-            <option value="UPI">UPI (PhonePe/GPay/Paytm)</option>
-            <option value="Bank Transfer">Net Banking / NEFT</option>
+            <option value="UPI">UPI</option>
+            <option value="Net Banking">Net Banking</option>
             <option value="Cheque">Cheque</option>
           </select>
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Reference Type */}
+        {/* Reference Model */}
         <div className="space-y-2">
-          <label className="text-sm font-bold">Expense Link (Reference Type)</label>
+          <label className="text-sm font-bold">{t('finance.expenses.form.referenceType')}</label>
           <select
             name="refModel"
             value={formData.refModel}
             onChange={handleChange}
             className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:ring-2 focus:ring-primary outline-none"
           >
-            <option value="Other">None (General Operational)</option>
+            <option value="Other">Operational / General</option>
             <option value="Booking">Event Booking</option>
             <option value="Staff">Staff Member</option>
             <option value="Vehicle">Vehicle Fleet</option>
           </select>
         </div>
 
-        {/* Reference Selection */}
-        {formData.refModel !== 'Other' && (
-          <div className="space-y-2">
-            <label className="text-sm font-bold">Select {formData.refModel}</label>
-            <select
-              name="referenceId"
-              value={formData.referenceId}
-              onChange={handleChange}
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:ring-2 focus:ring-primary outline-none"
-              required
-            >
-              <option value="">-- Choose {formData.refModel} --</option>
-              
-              {formData.refModel === 'Booking' && bookings.map(b => (
-                <option key={b._id} value={b._id}>
-                  {b.bookingId} - {b.eventTitle}
-                </option>
-              ))}
-
-              {formData.refModel === 'Staff' && staffList.map(s => (
-                <option key={s._id} value={s._id}>
-                  {s.name} ({s.role})
-                </option>
-              ))}
-
-              {formData.refModel === 'Vehicle' && vehicles.map(v => (
-                <option key={v._id} value={v._id}>
-                  {v.name} ({v.plateNumber})
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Amount */}
-        <div className="space-y-2">
-          <label className="text-sm font-bold">Expense Amount (₹)</label>
-          <input
-            type="number"
-            name="amount"
-            value={formData.amount || ''}
-            onChange={handleChange}
-            placeholder="e.g. 1500"
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:ring-2 focus:ring-primary outline-none"
-            required
-          />
-        </div>
-
         {/* Date */}
         <div className="space-y-2">
-          <label className="text-sm font-bold">Date of Expense</label>
+          <label className="text-sm font-bold">{t('finance.expenses.form.date')}</label>
           <input
             type="date"
             name="date"
@@ -201,7 +177,7 @@ export function ExpenseForm({ onClose, onSuccess }: ExpenseFormProps) {
 
       {/* Notes */}
       <div className="space-y-2">
-        <label className="text-sm font-bold">Remarks / Internal Notes (Optional)</label>
+        <label className="text-sm font-bold">{t('finance.expenses.form.notes')}</label>
         <textarea
           name="notes"
           value={formData.notes}
@@ -214,13 +190,44 @@ export function ExpenseForm({ onClose, onSuccess }: ExpenseFormProps) {
 
       {/* Footer Actions */}
       <div className="flex items-center justify-end gap-3 pt-6 border-t border-border">
-        <Button type="button" variant="outline" onClick={onClose} disabled={submitting}>
-          Cancel
+        <Button 
+          type="button" 
+          variant="outline" 
+          onClick={onClose || (() => router.push('/finance/expenses'))} 
+          disabled={submitting}
+        >
+          {t('finance.expenses.form.cancel')}
         </Button>
         <Button type="submit" variant="primary" disabled={submitting} className="font-bold px-6">
-          {submitting ? 'Saving...' : 'Log Expense'}
+          {submitting ? 'Saving...' : t('finance.expenses.form.submit')}
         </Button>
       </div>
     </form>
   );
+
+  if (isPageMode) {
+    return (
+      <div className="flex flex-col p-4 md:p-6 lg:p-8 w-full gap-6 max-w-full">
+        <div className="flex items-center gap-3">
+          <button 
+            type="button"
+            onClick={() => router.back()} 
+            className="p-1.5 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div>
+            <h1 className="text-2xl font-black tracking-tight text-foreground">{t('finance.expenses.form.title')}</h1>
+            <p className="text-xs text-muted-foreground">{t('finance.expenses.form.subtitle')}</p>
+          </div>
+        </div>
+
+        <div className="bg-card border border-border rounded-2xl shadow-sm p-6 w-full">
+          {formContent}
+        </div>
+      </div>
+    );
+  }
+
+  return formContent;
 }

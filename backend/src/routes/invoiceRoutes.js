@@ -2,15 +2,13 @@ const express = require('express');
 const router = express.Router();
 const invoiceController = require('../controllers/invoiceController');
 const { protect } = require('../middlewares/authMiddleware');
-const { authorize } = require('../middlewares/rbacMiddleware');
+const requirePermission = require('../middlewares/requirePermission');
 
 router.use(protect);
 
-const financeRoles = ['Owner', 'Admin', 'Accountant'];
-
-router.post('/generate', authorize(...financeRoles), invoiceController.createInvoice);
-router.get('/', authorize(...financeRoles), invoiceController.getInvoices);
-router.get('/:id', authorize(...financeRoles), invoiceController.getInvoiceById);
-router.delete('/:id', authorize(...financeRoles), invoiceController.deleteInvoice);
+router.post('/generate', requirePermission('invoices.create'), invoiceController.createInvoice);
+router.get('/', requirePermission('invoices.view'), invoiceController.getInvoices);
+router.get('/:id', requirePermission('invoices.view'), invoiceController.getInvoiceById);
+router.delete('/:id', requirePermission('invoices.delete'), invoiceController.deleteInvoice);
 
 module.exports = router;

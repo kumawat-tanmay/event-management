@@ -50,12 +50,18 @@ export function EventDetailView() {
   );
 
   React.useEffect(() => {
-    if (booking?.assignedSupervisor) {
+    if (booking?.assignedSupervisor && !supervisorName) {
       const sup = booking.assignedSupervisor;
       const name = typeof sup === 'object' ? sup.name : sup;
       setSupervisorName(name || '');
     }
-  }, [booking]);
+  }, [booking, supervisorName]);
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.pathname.includes('/verification/')) {
+      setActiveTab('GALLERY');
+    }
+  }, []);
 
   const handleSaveVerificationPhotos = async () => {
     if (!bookingId) return;

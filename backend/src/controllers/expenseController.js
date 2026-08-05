@@ -15,12 +15,14 @@ exports.createExpense = async (req, res) => {
       });
     }
 
+    const isValidRef = referenceId && ['Staff', 'Booking', 'Vendor', 'Vehicle'].includes(refModel);
+
     const expense = await Expense.create({
       category: category || 'Other',
       amount: Number(amount),
       paymentMode: paymentMode || 'Cash',
-      referenceId: referenceId || undefined,
-      refModel: referenceId ? (refModel || 'Other') : undefined,
+      referenceId: isValidRef ? referenceId : undefined,
+      refModel: isValidRef ? refModel : undefined,
       notes,
       date: date || new Date(),
       createdBy: req.user._id

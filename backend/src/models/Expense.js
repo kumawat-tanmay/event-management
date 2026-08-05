@@ -22,7 +22,7 @@ const expenseSchema = new mongoose.Schema({
   },
   refModel: {
     type: String,
-    enum: ['Staff', 'Booking', 'Vendor', 'Vehicle', 'Other']
+    enum: ['Staff', 'Booking', 'Vendor', 'Vehicle']
   },
   notes: {
     type: String,

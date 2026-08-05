@@ -111,10 +111,12 @@ const getItems = async (req, res) => {
     const aggregationResult = await Item.aggregate([
       { $match: filter },
       { $sort: { createdAt: -1 } },
-      { $facet: {
-          metadata: [ { $count: "total" } ],
-          data: [ { $skip: skip }, { $limit: limit } ]
-      } }
+      {
+        $facet: {
+          metadata: [{ $count: "total" }],
+          data: [{ $skip: skip }, { $limit: limit }]
+        }
+      }
     ]);
 
     const total = aggregationResult[0].metadata[0]?.total || 0;
@@ -406,9 +408,9 @@ const deleteItem = async (req, res) => {
     // Block delete if there is stock currently dispatched/rented out
     const hasDispatchedStock = item.warehouseStock && item.warehouseStock.some(entry => (entry.dispatched || 0) > 0);
     if (hasDispatchedStock) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Cannot delete item because some stock is currently rented out / dispatched to an active event site.' 
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot delete item because some stock is currently rented out / dispatched to an active event site.'
       });
     }
 
@@ -479,7 +481,7 @@ const deleteItem = async (req, res) => {
     item.isDeleted = true;
     await item.save();
 
-    
+
     res.json({ success: true, message: 'Item deleted successfully' });
   } catch (error) {
     console.error('Error deleting item:', error);
@@ -522,9 +524,9 @@ const addOpeningStock = async (req, res) => {
     const existingLedger = await InventoryLedger.findOne(existingLedgerQuery).lean();
 
     if (existingLedger) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Opening stock already exists for this item in the selected warehouse. Use adjusting stock in the ledger instead.' 
+      return res.status(400).json({
+        success: false,
+        message: 'Opening stock already exists for this item in the selected warehouse. Use adjusting stock in the ledger instead.'
       });
     }
 
@@ -557,7 +559,7 @@ const addOpeningStock = async (req, res) => {
     item.totalStock = item.warehouseStock.reduce((acc, entry) => acc + entry.quantity, 0);
     // Simple recalculation: available stock = quantity - dispatched - damaged
     item.availableStock = item.warehouseStock.reduce(
-      (acc, entry) => acc + (entry.quantity - (entry.dispatched || 0) - (entry.damaged || 0)), 
+      (acc, entry) => acc + (entry.quantity - (entry.dispatched || 0) - (entry.damaged || 0)),
       0
     );
 
@@ -583,10 +585,10 @@ const addOpeningStock = async (req, res) => {
       .populate('warehouseStock.warehouse', 'name code')
       .lean();
 
-    res.json({ 
-      success: true, 
-      data: populatedItem, 
-      message: 'Opening stock added successfully and ledger entry recorded' 
+    res.json({
+      success: true,
+      data: populatedItem,
+      message: 'Opening stock added successfully and ledger entry recorded'
     });
   } catch (error) {
     console.error('Error adding opening stock:', error);
@@ -629,10 +631,12 @@ const getLedger = async (req, res) => {
     const aggregationResult = await InventoryLedger.aggregate([
       { $match: filter },
       { $sort: { createdAt: -1 } },
-      { $facet: {
-          metadata: [ { $count: "total" } ],
-          data: [ { $skip: skip }, { $limit: limit } ]
-      } }
+      {
+        $facet: {
+          metadata: [{ $count: "total" }],
+          data: [{ $skip: skip }, { $limit: limit }]
+        }
+      }
     ]);
 
     const total = aggregationResult[0].metadata[0]?.total || 0;

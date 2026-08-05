@@ -8,7 +8,10 @@ import { StatsCard } from '@/components/common/StatsCard';
 import { financeService, LedgerItem, CashbookSummary } from '@/lib/services/finance.services';
 import toast from 'react-hot-toast';
 
+import { useTranslation } from 'react-i18next';
+
 export function CashbookView() {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [ledger, setLedger] = useState<LedgerItem[]>([]);
   const [summary, setSummary] = useState<CashbookSummary>({
@@ -26,7 +29,7 @@ export function CashbookView() {
       setSummary(data.summary);
     } catch (err: any) {
       console.error('Error loading cashbook:', err);
-      toast.error('Failed to load cashbook records');
+      toast.error(t('finance.cashbook.noEntries'));
     } finally {
       setLoading(false);
     }
@@ -68,18 +71,18 @@ export function CashbookView() {
       )
     },
     {
-      header: 'Debit (Cash In)',
+      header: t('finance.cashbook.cashIn'),
       accessorKey: 'amount',
-      cell: (row: LedgerItem) => row.type === 'receipt' ? (
+      cell: (row: LedgerItem) => (row.type === 'receipt' && row.source !== 'Booking Refund') ? (
         <span className="font-bold text-success">
           +₹{row.amount.toLocaleString()}
         </span>
       ) : '—'
     },
     {
-      header: 'Credit (Cash Out)',
+      header: t('finance.cashbook.cashOut'),
       accessorKey: 'amount',
-      cell: (row: LedgerItem) => row.type === 'payment' ? (
+      cell: (row: LedgerItem) => (row.type === 'payment' || row.source === 'Booking Refund') ? (
         <span className="font-bold text-error">
           -₹{row.amount.toLocaleString()}
         </span>
@@ -105,8 +108,8 @@ export function CashbookView() {
     <div className="flex flex-col p-4 md:p-6 lg:p-8 w-full">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h2 className="text-3xl font-black text-foreground tracking-tight mb-1">Cash Book Ledger</h2>
-          <p className="text-sm font-medium text-muted-foreground">Manage cash-in-hand logs, payments, and receipts.</p>
+          <h2 className="text-3xl font-black text-foreground tracking-tight mb-1">{t('finance.cashbook.title')}</h2>
+          <p className="text-sm font-medium text-muted-foreground">{t('finance.cashbook.subtitle')}</p>
         </div>
         <div className="flex gap-3 w-full sm:w-auto">
           <Button variant="outline" onClick={fetchCashbook} className="flex items-center justify-center gap-2">
@@ -118,9 +121,9 @@ export function CashbookView() {
 
       {/* Cash book balances */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <StatsCard title="Total Cash Receipts" value={`₹ ${summary.totalCashIn.toLocaleString()}`} icon={Wallet} colorTheme="success" />
-        <StatsCard title="Total Cash Outflow" value={`₹ ${summary.totalCashOut.toLocaleString()}`} icon={Wallet} colorTheme="error" />
-        <StatsCard title="Cash In Hand Balance" value={`₹ ${summary.currentBalance.toLocaleString()}`} icon={Wallet} colorTheme="warning" />
+        <StatsCard title={t('finance.cashbook.cashIn')} value={`₹ ${summary.totalCashIn.toLocaleString()}`} icon={Wallet} colorTheme="success" />
+        <StatsCard title={t('finance.cashbook.cashOut')} value={`₹ ${summary.totalCashOut.toLocaleString()}`} icon={Wallet} colorTheme="error" />
+        <StatsCard title={t('finance.cashbook.balance')} value={`₹ ${summary.currentBalance.toLocaleString()}`} icon={Wallet} colorTheme="warning" />
       </div>
 
       {/* Filter and Search */}
@@ -129,7 +132,7 @@ export function CashbookView() {
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Search cash transactions..."
+            placeholder={t('finance.cashbook.search')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-9 pr-4 py-2 bg-background border border-input rounded-xl text-sm focus:ring-2 focus:ring-primary outline-none"

@@ -1,19 +1,24 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { RefreshCw, ArrowLeft } from 'lucide-react';
 import { bookingService, Booking } from '@/lib/services/booking.services';
 import { paymentService, PaymentInput } from '@/lib/services/payment.services';
 import { Button } from '@/components/common/Button';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 
 interface PaymentFormProps {
-  onClose: () => void;
-  onSuccess: () => void;
+  onClose?: () => void;
+  onSuccess?: () => void;
 }
 
 export function PaymentForm({ onClose, onSuccess }: PaymentFormProps) {
+  const { t } = useTranslation();
+  const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
+  const isPageMode = !onClose;
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   
@@ -84,7 +89,11 @@ export function PaymentForm({ onClose, onSuccess }: PaymentFormProps) {
       };
       await paymentService.createPayment(payload);
       toast.success('Payment recorded successfully');
-      onSuccess();
+      if (onSuccess) {
+        onSuccess();
+      } else {
+        router.push('/finance/payments');
+      }
     } catch (err: any) {
       const msg = err.response?.data?.message || err.message || 'Failed to record payment';
       toast.error(msg);
@@ -93,81 +102,62 @@ export function PaymentForm({ onClose, onSuccess }: PaymentFormProps) {
     }
   };
 
-  return (
-    <form onSubmit={handleSubmit} className="space-y-6 pt-4 font-sans text-foreground">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+  const formContent = (
+    <form onSubmit={handleSubmit} className="space-y-6 pt-4 font-sans text-foreground w-full">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
         {/* Booking Selection */}
         <div className="space-y-2">
-          <label className="text-sm font-bold">Select Event Booking</label>
+          <label className="text-sm font-bold">{t('finance.payments.form.selectBooking')}</label>
           <select
             name="bookingId"
             value={formData.bookingId}
             onChange={handleBookingChange}
             className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:ring-2 focus:ring-primary outline-none"
           >
-            <option value="">-- Direct Customer Payment (No Booking) --</option>
+            <option value="">{t('finance.payments.form.noBooking')}</option>
             {bookings.map(b => (
               <option key={b._id} value={b._id}>
-                {b.bookingId} - {b.eventTitle} ({b.customer?.name || 'Walk-in'})
+                {b.bookingId} - {b.eventTitle} ({b.customer?.name})
               </option>
             ))}
           </select>
         </div>
 
+        {/* Payment Amount */}
+        <div className="space-y-2">
+          <label className="text-sm font-bold">{t('finance.payments.form.amount')}</label>
+          <input
+            type="number"
+            name="amount"
+            value={formData.amount || ''}
+            onChange={handleChange}
+            placeholder="0.00"
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:ring-2 focus:ring-primary outline-none"
+            required
+            min="1"
+          />
+        </div>
+
         {/* Payment Type */}
         <div className="space-y-2">
-          <label className="text-sm font-bold">Payment Type</label>
+          <label className="text-sm font-bold">{t('finance.payments.form.paymentType')}</label>
           <select
             name="paymentType"
             value={formData.paymentType}
             onChange={handleChange}
             className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:ring-2 focus:ring-primary outline-none"
           >
-            <option value="advance">Advance Payment (अग्रिम भुगतान)</option>
-            <option value="final">Final Settlement (अंतिम चुकता)</option>
-            <option value="security_deposit">Security Deposit / Guarantee (सिक्योरिटी जमा)</option>
-            <option value="security_refund">Security Refund (सिक्योरिटी वापसी)</option>
-            <option value="refund">General Refund (रिफंड)</option>
+            <option value="advance">{t('finance.payments.form.advance')}</option>
+            <option value="final">{t('finance.payments.form.final')}</option>
+            <option value="security_deposit">{t('finance.payments.form.security_deposit')}</option>
+            <option value="security_refund">{t('finance.payments.form.security_refund')}</option>
+            <option value="refund">{t('finance.payments.form.refund')}</option>
           </select>
         </div>
-      </div>
 
-      {/* Booking Ledger Info Card */}
-      {selectedBooking && (
-        <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 grid grid-cols-3 gap-4 text-center">
-          <div>
-            <p className="text-xs text-muted-foreground">Grand Total</p>
-            <p className="text-base font-black">₹ {selectedBooking.grandTotal.toLocaleString()}</p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">Paid So Far</p>
-            <p className="text-base font-black text-success">₹ {selectedBooking.advancePaid.toLocaleString()}</p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">Remaining Dues</p>
-            <p className="text-base font-black text-error">₹ {selectedBooking.balanceAmount.toLocaleString()}</p>
-          </div>
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Amount */}
+        {/* Transaction Date */}
         <div className="space-y-2">
-          <label className="text-sm font-bold">Payment Amount (₹)</label>
-          <input
-            type="number"
-            name="amount"
-            value={formData.amount || ''}
-            onChange={handleChange}
-            placeholder="e.g. 5000"
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:ring-2 focus:ring-primary outline-none"
-            required
-          />
-        </div>
-
-        {/* Date */}
-        <div className="space-y-2">
-          <label className="text-sm font-bold">Transaction Date</label>
+          <label className="text-sm font-bold">{t('finance.payments.form.transactionDate')}</label>
           <input
             type="date"
             name="transactionDate"
@@ -177,12 +167,10 @@ export function PaymentForm({ onClose, onSuccess }: PaymentFormProps) {
             required
           />
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Mode */}
+        {/* Payment Mode */}
         <div className="space-y-2">
-          <label className="text-sm font-bold">Payment Mode</label>
+          <label className="text-sm font-bold">{t('finance.payments.form.paymentMode')}</label>
           <select
             name="paymentMode"
             value={formData.paymentMode}
@@ -190,8 +178,8 @@ export function PaymentForm({ onClose, onSuccess }: PaymentFormProps) {
             className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:ring-2 focus:ring-primary outline-none"
           >
             <option value="Cash">Cash</option>
-            <option value="UPI">UPI (PhonePe/GPay/Paytm)</option>
-            <option value="Bank Transfer">Net Banking / NEFT</option>
+            <option value="UPI">UPI</option>
+            <option value="Net Banking">Net Banking</option>
             <option value="Cheque">Cheque</option>
           </select>
         </div>
@@ -199,13 +187,13 @@ export function PaymentForm({ onClose, onSuccess }: PaymentFormProps) {
         {/* Reference/Transaction ID */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <label className="text-sm font-bold">Transaction ID / Reference #</label>
+            <label className="text-sm font-bold">{t('finance.payments.form.transactionId')}</label>
             <button
               type="button"
               onClick={handleAutoGenerateTxnId}
               className="text-xs font-bold text-primary hover:underline flex items-center gap-1 cursor-pointer transition-colors"
             >
-              <RefreshCw className="w-3.5 h-3.5" /> Auto Generate
+              <RefreshCw className="w-3.5 h-3.5" /> {t('finance.payments.form.autoGenerate')}
             </button>
           </div>
           <input
@@ -213,16 +201,34 @@ export function PaymentForm({ onClose, onSuccess }: PaymentFormProps) {
             name="transactionId"
             value={formData.transactionId}
             onChange={handleChange}
-            placeholder="e.g. UPI Ref, Cheque Number (or Auto-generated)"
+            placeholder="e.g. UPI Ref, Cheque Number"
             className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:ring-2 focus:ring-primary outline-none"
           />
-          <p className="text-[11px] text-muted-foreground">Leave blank to auto-generate unique ID on submit</p>
+          <p className="text-[11px] text-muted-foreground">{t('finance.payments.form.autoGenHint')}</p>
         </div>
       </div>
 
+      {/* Booking Ledger Info Card */}
+      {selectedBooking && (
+        <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 grid grid-cols-3 gap-4 text-center">
+          <div>
+            <p className="text-xs text-muted-foreground">{t('finance.payments.form.grandTotal')}</p>
+            <p className="text-base font-black">₹ {selectedBooking.grandTotal.toLocaleString()}</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">{t('finance.payments.form.paidSoFar')}</p>
+            <p className="text-base font-black text-success">₹ {selectedBooking.advancePaid.toLocaleString()}</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">{t('finance.payments.form.remainingDues')}</p>
+            <p className="text-base font-black text-error">₹ {selectedBooking.balanceAmount.toLocaleString()}</p>
+          </div>
+        </div>
+      )}
+
       {/* Notes */}
       <div className="space-y-2">
-        <label className="text-sm font-bold">Remarks / Internal Notes (Optional)</label>
+        <label className="text-sm font-bold">{t('finance.payments.form.notes')}</label>
         <textarea
           name="notes"
           value={formData.notes}
@@ -235,13 +241,44 @@ export function PaymentForm({ onClose, onSuccess }: PaymentFormProps) {
 
       {/* Footer Actions */}
       <div className="flex items-center justify-end gap-3 pt-6 border-t border-border">
-        <Button type="button" variant="outline" onClick={onClose} disabled={submitting}>
-          Cancel
+        <Button 
+          type="button" 
+          variant="outline" 
+          onClick={onClose || (() => router.push('/finance/payments'))} 
+          disabled={submitting}
+        >
+          {t('finance.payments.form.cancel')}
         </Button>
         <Button type="submit" variant="primary" disabled={submitting} className="font-bold px-6">
-          {submitting ? 'Recording...' : 'Record Transaction'}
+          {submitting ? t('finance.payments.form.recording') : t('finance.payments.form.submit')}
         </Button>
       </div>
     </form>
   );
+
+  if (isPageMode) {
+    return (
+      <div className="flex flex-col p-4 md:p-6 lg:p-8 w-full gap-6 max-w-full">
+        <div className="flex items-center gap-3">
+          <button 
+            type="button"
+            onClick={() => router.back()} 
+            className="p-1.5 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div>
+            <h1 className="text-2xl font-black tracking-tight text-foreground">{t('finance.payments.form.title')}</h1>
+            <p className="text-xs text-muted-foreground">{t('finance.payments.form.subtitle')}</p>
+          </div>
+        </div>
+
+        <div className="bg-card border border-border rounded-2xl shadow-sm p-6 w-full">
+          {formContent}
+        </div>
+      </div>
+    );
+  }
+
+  return formContent;
 }

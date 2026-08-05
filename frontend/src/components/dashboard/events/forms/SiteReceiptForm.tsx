@@ -35,12 +35,12 @@ export function SiteReceiptForm() {
   const { data: users = [] } = useSWR('/users', () => userService.getUsers());
 
   React.useEffect(() => {
-    if (booking?.assignedSupervisor) {
+    if (booking?.assignedSupervisor && !supervisorName) {
       const sup = booking.assignedSupervisor;
       const name = typeof sup === 'object' ? sup.name : sup;
       setSupervisorName(name || '');
     }
-  }, [booking]);
+  }, [booking, supervisorName]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

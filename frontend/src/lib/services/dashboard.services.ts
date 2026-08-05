@@ -1,5 +1,17 @@
 import apiClient from '../apiClient';
 
+export interface GrowthPoint {
+  date: string;
+  revenue: number;
+  expenses: number;
+}
+
+export interface GrowthAnalysisData {
+  monthly: GrowthPoint[];
+  weekly: GrowthPoint[];
+  daily: GrowthPoint[];
+}
+
 export interface DashboardStats {
   summary: {
     todaysEvents: number;
@@ -10,11 +22,7 @@ export interface DashboardStats {
     materialAtSite: number;
     staffPresent: string;
   };
-  growthAnalysis: {
-    date: string;
-    revenue: number;
-    expenses: number;
-  }[];
+  growthAnalysis: GrowthAnalysisData | GrowthPoint[];
   categoryBreakdown: Record<string, number>;
   recentBookings: {
     _id: string;

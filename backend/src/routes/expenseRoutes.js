@@ -2,15 +2,13 @@ const express = require('express');
 const router = express.Router();
 const expenseController = require('../controllers/expenseController');
 const { protect } = require('../middlewares/authMiddleware');
-const { authorize } = require('../middlewares/rbacMiddleware');
+const requirePermission = require('../middlewares/requirePermission');
 
 router.use(protect);
 
-const financeRoles = ['Owner', 'Admin', 'Accountant'];
-
-router.post('/', authorize(...financeRoles), expenseController.createExpense);
-router.get('/', authorize(...financeRoles), expenseController.getExpenses);
-router.get('/:id', authorize(...financeRoles), expenseController.getExpenseById);
-router.delete('/:id', authorize(...financeRoles), expenseController.deleteExpense);
+router.post('/', requirePermission('expenses.create'), expenseController.createExpense);
+router.get('/', requirePermission('expenses.view'), expenseController.getExpenses);
+router.get('/:id', requirePermission('expenses.view'), expenseController.getExpenseById);
+router.delete('/:id', requirePermission('expenses.delete'), expenseController.deleteExpense);
 
 module.exports = router;

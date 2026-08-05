@@ -34,6 +34,25 @@ exports.getCashbook = async (req, res) => {
     }
     const expenses = await Expense.find(expensesFilter);
 
+    // Calculate opening balance from prior transactions
+    let openingBalance = 0;
+    if (startDate) {
+      const priorPayments = await Payment.find({
+        isDeleted: false,
+        paymentMode: 'Cash',
+        transactionDate: { $lt: new Date(startDate) }
+      });
+      const priorExpenses = await Expense.find({
+        isDeleted: false,
+        paymentMode: 'Cash',
+        date: { $lt: new Date(startDate) }
+      });
+
+      const priorInflow = priorPayments.reduce((acc, curr) => acc + (curr.paymentType === 'refund' ? 0 : curr.amount), 0);
+      const priorOutflow = priorExpenses.reduce((acc, curr) => acc + curr.amount, 0) + priorPayments.reduce((acc, curr) => acc + (curr.paymentType === 'refund' ? curr.amount : 0), 0);
+      openingBalance = priorInflow - priorOutflow;
+    }
+
     // Combine and sort chronologically
     let ledger = [];
 
@@ -66,8 +85,8 @@ exports.getCashbook = async (req, res) => {
     // Sort by date ascending to calculate running balance
     ledger.sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    // Calculate opening/running balances
-    let runningBalance = 0;
+    // Calculate running balances starting from the opening balance
+    let runningBalance = openingBalance;
     const ledgerWithBalances = ledger.map(item => {
       if (item.type === 'receipt') {
         if (item.source === 'Booking Refund') {
@@ -81,8 +100,6 @@ exports.getCashbook = async (req, res) => {
       return { ...item, runningBalance };
     });
 
-    // If date filters applied, we filter ledger after sorting to maintain correct running balance context,
-    // or simply return the slice. Let's return the sorted ledger and summary.
     res.status(200).json({
       success: true,
       data: {
@@ -132,6 +149,25 @@ exports.getBankbook = async (req, res) => {
     }
     const expenses = await Expense.find(expensesFilter);
 
+    // Calculate opening balance from prior transactions
+    let openingBalance = 0;
+    if (startDate) {
+      const priorPayments = await Payment.find({
+        isDeleted: false,
+        paymentMode: { $in: bankModes },
+        transactionDate: { $lt: new Date(startDate) }
+      });
+      const priorExpenses = await Expense.find({
+        isDeleted: false,
+        paymentMode: { $in: bankModes },
+        date: { $lt: new Date(startDate) }
+      });
+
+      const priorInflow = priorPayments.reduce((acc, curr) => acc + (curr.paymentType === 'refund' ? 0 : curr.amount), 0);
+      const priorOutflow = priorExpenses.reduce((acc, curr) => acc + curr.amount, 0) + priorPayments.reduce((acc, curr) => acc + (curr.paymentType === 'refund' ? curr.amount : 0), 0);
+      openingBalance = priorInflow - priorOutflow;
+    }
+
     // Combine and sort
     let ledger = [];
 
@@ -167,7 +203,7 @@ exports.getBankbook = async (req, res) => {
 
     ledger.sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    let runningBalance = 0;
+    let runningBalance = openingBalance;
     const ledgerWithBalances = ledger.map(item => {
       if (item.type === 'receipt') {
         if (item.source === 'Booking Refund') {

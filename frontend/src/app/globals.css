@@ -239,6 +239,19 @@
   animation: fadeIn 0.4s ease-out;
 }
 
+@keyframes shimmer {
+  0% {
+    transform: translateX(-150%) skewX(-12deg);
+  }
+  100% {
+    transform: translateX(250%) skewX(-12deg);
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 2.5s infinite linear;
+}
+
 .animate-slideIn {
   animation: slideIn 1.5s ease-in-out;
 }

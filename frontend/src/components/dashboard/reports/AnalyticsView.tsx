@@ -73,7 +73,13 @@ export function AnalyticsView() {
   const stats = statsData?.summary;
   const recentBookings = statsData?.recentBookings || [];
   
-  const growthAnalysis = statsData?.growthAnalysis || [];
+  const growthAnalysis: any[] = React.useMemo(() => {
+    const ga = statsData?.growthAnalysis;
+    if (!ga) return [];
+    if (Array.isArray(ga)) return ga;
+    return ga.monthly || ga.weekly || ga.daily || [];
+  }, [statsData]);
+
   const categoryBreakdown = statsData?.categoryBreakdown || {
     'Transport': 0,
     'Material Purchase': 0,
@@ -83,8 +89,8 @@ export function AnalyticsView() {
   };
 
   // Dynamic values
-  const totalSalesRevenue = recentBookings.reduce((acc, curr) => acc + (curr.grandTotal || 0), 0);
-  const totalReceivedRevenue = recentBookings.reduce((acc, curr) => acc + (curr.advancePaid || 0), 0);
+  const totalSalesRevenue = recentBookings.reduce((acc: number, curr: any) => acc + (curr.grandTotal || 0), 0);
+  const totalReceivedRevenue = recentBookings.reduce((acc: number, curr: any) => acc + (curr.advancePaid || 0), 0);
   const totalExpensesOutflow = (categoryBreakdown.Transport || 0) +
                                (categoryBreakdown['Material Purchase'] || 0) +
                                (categoryBreakdown.Maintenance || 0) +
@@ -92,22 +98,33 @@ export function AnalyticsView() {
                                (categoryBreakdown.Other || 0);
 
   const settlementRate = totalSalesRevenue > 0 ? Math.round((totalReceivedRevenue / totalSalesRevenue) * 100) : 0;
-  const activeClientsCount = new Set(recentBookings.map(b => b.customerName).filter(Boolean)).size;
+  const activeClientsCount = new Set(recentBookings.map((b: any) => b.customerName).filter(Boolean)).size;
 
   // DYNAMIC CHART SVG SCALING
-  const maxVal = Math.max(...(growthAnalysis.map(g => Math.max(g.revenue, g.expenses)) || [100000]), 10000);
+  const maxVal = React.useMemo(() => {
+    if (!Array.isArray(growthAnalysis) || growthAnalysis.length === 0) return 10000;
+    return Math.max(...growthAnalysis.map((g: any) => Math.max(g?.revenue || 0, g?.expenses || 0)), 10000);
+  }, [growthAnalysis]);
   
-  const pointsSales = growthAnalysis.map((g, idx) => {
-    const x = (idx / 5) * 100;
-    const y = maxVal > 0 ? 50 - (g.revenue / maxVal) * 40 : 45;
-    return `${x},${y}`;
-  }).join(' ');
+  const pointsSales = React.useMemo(() => {
+    if (!Array.isArray(growthAnalysis) || growthAnalysis.length === 0) return '';
+    return growthAnalysis.map((g: any, idx: number) => {
+      const count = growthAnalysis.length || 1;
+      const x = (idx / (count - 1 || 1)) * 100;
+      const y = maxVal > 0 ? 50 - ((g?.revenue || 0) / maxVal) * 40 : 45;
+      return `${x.toFixed(2)},${y.toFixed(2)}`;
+    }).join(' ');
+  }, [growthAnalysis, maxVal]);
 
-  const pointsExpenses = growthAnalysis.map((g, idx) => {
-    const x = (idx / 5) * 100;
-    const y = maxVal > 0 ? 50 - (g.expenses / maxVal) * 40 : 45;
-    return `${x},${y}`;
-  }).join(' ');
+  const pointsExpenses = React.useMemo(() => {
+    if (!Array.isArray(growthAnalysis) || growthAnalysis.length === 0) return '';
+    return growthAnalysis.map((g: any, idx: number) => {
+      const count = growthAnalysis.length || 1;
+      const x = (idx / (count - 1 || 1)) * 100;
+      const y = maxVal > 0 ? 50 - ((g?.expenses || 0) / maxVal) * 40 : 45;
+      return `${x.toFixed(2)},${y.toFixed(2)}`;
+    }).join(' ');
+  }, [growthAnalysis, maxVal]);
 
   // DONUT CALCULATIONS
   const transportPct = totalExpensesOutflow > 0 ? Math.round((categoryBreakdown.Transport / totalExpensesOutflow) * 100) : 0;
