@@ -127,16 +127,17 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const resData = error.response?.data;
-    
+
     // 1. Smart logout: Only logout when the token itself is expired/invalid
     const isDeactivated = error.response?.status === 403 && resData?.message?.toLowerCase().includes('deactivated');
 
-    // 1.5 Handle CSRF Token Expiration (403 Forbidden with CSRF message)
-    const isCsrfFailure = error.response?.status === 403 && resData?.message?.toLowerCase().includes('csrf');
+    // 1.5 Handle CSRF Token Expiration (403/400 Forbidden with CSRF message)
+    const isCsrfFailure = (error.response?.status === 403 || error.response?.status === 400) &&
+      resData?.message?.toLowerCase().includes('csrf');
     if (isCsrfFailure && !error.config._retry) {
       error.config._retry = true;
       csrfToken = null; // Force clear the stale token
-      
+
       try {
         const newToken = await fetchCsrfToken();
         if (newToken) {

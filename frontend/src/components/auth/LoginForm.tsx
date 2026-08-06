@@ -54,12 +54,9 @@ export default function LoginForm() {
         toast.error(msg, { id: toastId });
       }
     } catch (err: any) {
+      const backendMsg = err.response?.data?.message;
       const status = err.response?.status;
-      const msg = status === 401
-        ? 'Invalid email or password'
-        : status === 403
-        ? 'Account is deactivated. Contact admin.'
-        : err.response?.data?.message || 'An error occurred during login.';
+      const msg = backendMsg || (status === 401 ? 'Invalid email or password' : 'An error occurred during login.');
       setError(msg);
       toast.error(msg, { id: toastId });
     } finally {
@@ -119,7 +116,7 @@ export default function LoginForm() {
         )}
         {isGoogleLoading ? t('auth.connecting', 'Connecting...') : t('auth.signInGoogle')}
       </button>
- 
+
       {/* ── Divider ── */}
       <div className="relative flex items-center">
         <div className="flex-grow border-t border-border"></div>
@@ -154,7 +151,7 @@ export default function LoginForm() {
             />
           </div>
         </div>
- 
+
         {/* Password */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
