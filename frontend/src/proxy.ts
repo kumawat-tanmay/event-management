@@ -13,8 +13,10 @@ export function proxy(request: NextRequest) {
     pathname.startsWith('/forgot-password') || 
     pathname.startsWith('/reset-password');
   
-  // Exclude static paths, API routes, and auth paths to determine if it's a protected route
-  const isProtectedRoute = !isAuthRoute && !pathname.startsWith('/api') && !pathname.startsWith('/_next');
+  // Exclude static paths, API routes, auth paths, and common static files
+  const isStaticFile = /\.(?:json|js|css|png|jpg|jpeg|gif|svg|ico|txt|woff2?|webmanifest|map)$/i.test(pathname);
+  
+  const isProtectedRoute = !isAuthRoute && !pathname.startsWith('/api') && !pathname.startsWith('/_next') && !isStaticFile;
 
   if (isProtectedRoute && !token) {
     // Redirect to login if accessing protected route without a token
@@ -32,6 +34,6 @@ export function proxy(request: NextRequest) {
 // See "Matching Paths" below to learn more
 export const config = {
   matcher: [
-    '/((?!api|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|manifest.json|sw.js|workbox-|logo/).*)',
   ],
 };
