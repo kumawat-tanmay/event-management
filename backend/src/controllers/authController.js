@@ -55,17 +55,18 @@ const loginUser = async (req, res) => {
     const user = await User.findOne({ email: normalizedEmail, isDeleted: false }).collation({ locale: 'en', strength: 2 });
 
     if (user && (await user.matchPassword(password))) {
-      if (!user.isActive) {
-        return res.status(401).json({ success: false, message: 'User account is disabled' });
-      }
-
       // If user is Pending (just invited), check if invite expired, then set Active
       if (user.status === 'Pending') {
         if (user.inviteExpiresAt && Date.now() > new Date(user.inviteExpiresAt).getTime()) {
           return res.status(401).json({ success: false, message: 'Your invitation has expired. Please request a new one.' });
         }
         user.status = 'Active';
+        user.isActive = true;
         await user.save({ validateBeforeSave: false });
+      }
+
+      if (!user.isActive || user.status === 'Inactive') {
+        return res.status(401).json({ success: false, message: 'Account is deactivated. Contact admin.' });
       }
 
       const { roleName, permissions } = await resolveUserRoleAndPermissions(user);
@@ -153,20 +154,30 @@ const googleAuth = async (req, res) => {
     const normalizedEmail = email.trim().toLowerCase();
 
     // 🔒 STRICT INVITE-ONLY: User MUST exist in the database beforehand!
-    let user = await User.findOne({ 
-      email: normalizedEmail, 
-      isDeleted: false 
+    let user = await User.findOne({
+      email: normalizedEmail,
+      isDeleted: false
     }).collation({ locale: 'en', strength: 2 });
 
     if (!user) {
-      return res.status(401).json({ 
-        success: false, 
-        message: 'No account found for this Google email. You must be invited by an administrator to access the system.' 
+      return res.status(401).json({
+        success: false,
+        message: 'No account found for this Google email. You must be invited by an administrator to access the system.'
       });
     }
 
-    if (!user.isActive) {
-      return res.status(403).json({ success: false, message: 'User account is disabled. Contact admin.' });
+    // If user is Pending (just invited), check if invite expired, then set Active
+    if (user.status === 'Pending') {
+      if (user.inviteExpiresAt && Date.now() > new Date(user.inviteExpiresAt).getTime()) {
+        return res.status(401).json({ success: false, message: 'Your invitation has expired. Please contact admin.' });
+      }
+      user.status = 'Active';
+      user.isActive = true;
+      await user.save({ validateBeforeSave: false });
+    }
+
+    if (!user.isActive || user.status === 'Inactive') {
+      return res.status(403).json({ success: false, message: 'Account is deactivated. Contact admin.' });
     }
 
     // Update googleId and avatar from Google if available
@@ -374,7 +385,7 @@ const updatePassword = async (req, res) => {
 
     // Check current password
     if (!user.password) {
-       return res.status(400).json({ success: false, message: 'Cannot update password for Google Auth user without existing password.' });
+      return res.status(400).json({ success: false, message: 'Cannot update password for Google Auth user without existing password.' });
     }
     const isMatch = await user.matchPassword(currentPassword);
     if (!isMatch) {
