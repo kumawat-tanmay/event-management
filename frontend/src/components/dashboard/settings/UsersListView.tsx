@@ -2,12 +2,13 @@
 
 import React, { useState } from 'react';
 import useSWR from 'swr';
-import { Loader2, UserPlus, Mail, Shield, Edit, X, Save } from 'lucide-react';
+import { Loader2, UserPlus, Mail, Shield, Edit, Trash2, X, Save } from 'lucide-react';
 import { userService, User } from '@/lib/services/user.services';
 import { roleService, Role } from '@/lib/services/role.services';
 import { DataTable } from '@/components/common/DataTable';
 import { Button } from '@/components/common/Button';
 import { StatusBadge } from '@/components/common/StatusBadge';
+import { ConfirmModal } from '@/components/common/ConfirmModal';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAuth } from '@/hooks/useAuth';
 import { ActionGuard } from '@/components/auth/ActionGuard';
@@ -27,6 +28,11 @@ export default function UsersListView() {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [selectedRole, setSelectedRole] = useState('');
   const [isUpdatingRole, setIsUpdatingRole] = useState(false);
+
+  // Delete User Modal state
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Only Owner/Admin can invite
   const isAdminOrOwner = currentUserRole === 'Owner' || currentUserRole === 'Admin';
@@ -48,6 +54,28 @@ export default function UsersListView() {
       toast.error(err.message || 'Failed to update role');
     } finally {
       setIsUpdatingRole(false);
+    }
+  };
+
+  const handleDeleteClick = (user: User) => {
+    setUserToDelete(user);
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!userToDelete) return;
+    setIsDeleting(true);
+    const toastId = toast.loading('Deleting user...');
+    try {
+      await userService.deleteUser(userToDelete._id);
+      toast.success('User deleted successfully', { id: toastId });
+      mutate();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || err.message || 'Failed to delete user', { id: toastId });
+    } finally {
+      setIsDeleting(false);
+      setIsDeleteModalOpen(false);
+      setUserToDelete(null);
     }
   };
 
@@ -104,7 +132,7 @@ export default function UsersListView() {
       accessorKey: 'actions',
       cell: (row: User) => (
         <div className="flex items-center justify-center gap-2">
-          {isAdminOrOwner && !(currentUserRole === 'Admin' && row.role === 'Owner') && (
+          {isAdminOrOwner && (
             <Button
               variant="ghost"
               size="icon"
@@ -114,6 +142,20 @@ export default function UsersListView() {
             >
               <Edit className="w-4 h-4" />
             </Button>
+          )}
+
+          {isAdminOrOwner && (
+            <ActionGuard permission="users.delete">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground hover:text-red-600 hover:bg-red-500/10 transition-colors"
+                title={t('common.delete', 'Delete User')}
+                onClick={() => handleDeleteClick(row)}
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </ActionGuard>
           )}
         </div>
       )
@@ -183,7 +225,7 @@ export default function UsersListView() {
                   className="flex h-10 w-full rounded-xl border border-input bg-background text-foreground px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <option value="" disabled>{t('profile.selectRole', 'Select a role...')}</option>
-                  {roles?.map(r => (
+                  {(roles || []).map(r => (
                     <option key={r._id} value={r.name}>{r.name}</option>
                   ))}
                 </select>
@@ -206,6 +248,16 @@ export default function UsersListView() {
           </div>
         </div>
       )}
+
+      {/* Delete User Confirmation Modal */}
+      <ConfirmModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={confirmDelete}
+        title={t('users.deleteUser', 'Delete User')}
+        message={`Are you sure you want to delete user "${userToDelete?.name || ''}"? This action will soft-delete their account.`}
+        confirmText={t('common.delete', 'Delete')}
+      />
     </div>
   );
 }

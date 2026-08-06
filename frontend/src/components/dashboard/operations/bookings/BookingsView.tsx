@@ -55,6 +55,26 @@ export function BookingsView() {
   const [bookingToDelete, setBookingToDelete] = useState<string | null>(null);
   
   const tabs = ['ALL', 'CONFIRMED', 'INPROGRESS', 'COMPLETED', 'CANCELLED'];
+  const tabNavRef = React.useRef<HTMLDivElement>(null);
+  const tabBtnRefs = React.useRef<{ [key: string]: HTMLButtonElement | null }>({});
+
+  const centerActiveTab = React.useCallback((tab: string) => {
+    const container = tabNavRef.current;
+    const target = tabBtnRefs.current[tab];
+    if (container && target) {
+      const scrollLeft = target.offsetLeft - (container.clientWidth / 2) + (target.offsetWidth / 2);
+      container.scrollTo({ left: scrollLeft, behavior: 'smooth' });
+    }
+  }, []);
+
+  React.useEffect(() => {
+    if (activeTab) {
+      const timer = setTimeout(() => {
+        centerActiveTab(activeTab);
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [activeTab, centerActiveTab]);
 
   const fetchBookings = useCallback(async () => {
     try {
@@ -322,15 +342,24 @@ Thank you for choosing Krishna Tent & Events!
             {t('bookings.title')}
           </div>
           
-          <div className="flex items-center bg-muted/50 p-1 rounded-lg overflow-x-auto w-full md:w-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          <div
+            ref={tabNavRef}
+            className="relative flex items-center bg-muted/50 p-1.5 rounded-xl overflow-x-auto flex-nowrap max-w-full md:max-w-md lg:max-w-lg [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] shrink"
+          >
             {tabs.map((tab) => (
               <button
                 key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`px-4 py-1.5 text-xs font-bold transition-all rounded-md whitespace-nowrap ${
+                ref={(el) => {
+                  tabBtnRefs.current[tab] = el;
+                }}
+                onClick={() => {
+                  setActiveTab(tab);
+                  centerActiveTab(tab);
+                }}
+                className={`px-4 py-1.5 text-xs font-black transition-all rounded-lg whitespace-nowrap shrink-0 cursor-pointer ${
                   activeTab === tab
-                    ? 'bg-primary text-on-primary shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                    ? 'bg-primary text-on-primary shadow-sm font-black'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
                 }`}
               >
                 {tab === 'ALL' ? t('bookings.allBookings') : 

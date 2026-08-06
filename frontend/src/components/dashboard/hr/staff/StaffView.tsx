@@ -21,7 +21,7 @@ export function StaffView() {
   const [data, setData] = useState<Staff[]>([]);
   const [activeTab, setActiveTab] = useState('ALL STAFF');
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [staffToDelete, setStaffToDelete] = useState<string | null>(null);
 
@@ -34,7 +34,27 @@ export function StaffView() {
   const [payNotes, setPayNotes] = useState<string>('');
   const [isPaying, setIsPaying] = useState(false);
 
+  const tabNavRef = React.useRef<HTMLDivElement>(null);
+  const tabBtnRefs = React.useRef<{ [key: string]: HTMLButtonElement | null }>({});
   const roleTabs = ['ALL STAFF', 'ADMIN', 'DRIVER', 'SUPERVISOR', 'MANAGER', 'LABOUR', 'ACCOUNTANT'];
+
+  const centerActiveTab = React.useCallback((tab: string) => {
+    const container = tabNavRef.current;
+    const target = tabBtnRefs.current[tab];
+    if (container && target) {
+      const scrollLeft = target.offsetLeft - (container.clientWidth / 2) + (target.offsetWidth / 2);
+      container.scrollTo({ left: scrollLeft, behavior: 'smooth' });
+    }
+  }, []);
+
+  React.useEffect(() => {
+    if (activeTab) {
+      const timer = setTimeout(() => {
+        centerActiveTab(activeTab);
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [activeTab, centerActiveTab]);
 
   // Fetch Staff List
   const handleRefresh = async () => {
@@ -110,10 +130,10 @@ export function StaffView() {
   };
 
   const filteredData = data.filter(s => {
-    const matchesSearch = (s.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          (s.phone || '').includes(searchQuery) ||
-                          (s.staffId || '').toLowerCase().includes(searchQuery.toLowerCase());
-    
+    const matchesSearch = (s.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (s.phone || '').includes(searchQuery) ||
+      (s.staffId || '').toLowerCase().includes(searchQuery.toLowerCase());
+
     let matchesTab = true;
     if (activeTab !== 'ALL STAFF') {
       matchesTab = (s.role || '').toUpperCase().includes(activeTab);
@@ -186,9 +206,9 @@ export function StaffView() {
 
           {/* Log Payment Button */}
           <ActionGuard permission="hr.update">
-            <Button 
-              variant="ghost" 
-              size="icon" 
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => handleOpenPayModal(row)}
               className="h-8 w-8 text-emerald-600 hover:bg-emerald-50 transition-colors"
               title="Log Salary / Advance Payment"
@@ -215,9 +235,9 @@ export function StaffView() {
 
           {/* Delete */}
           <ActionGuard permission="hr.delete">
-            <Button 
-              variant="ghost" 
-              size="icon" 
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => {
                 setStaffToDelete(row._id);
                 setDeleteModalOpen(true);
@@ -235,7 +255,7 @@ export function StaffView() {
 
   return (
     <div className="flex flex-col p-4 md:p-6 lg:p-8 w-full font-sans">
-      
+
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
@@ -293,16 +313,25 @@ export function StaffView() {
             <Users className="w-5 h-5 text-primary" />
             <span>{t('hr.staffDirectory')} ({filteredData.length})</span>
           </div>
-          
-          <div className="flex items-center bg-muted/50 p-1 rounded-lg overflow-x-auto w-full md:w-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+
+          <div
+            ref={tabNavRef}
+            className="relative flex items-center bg-muted/50 p-1.5 rounded-xl overflow-x-auto flex-nowrap max-w-full md:max-w-md lg:max-w-lg [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] shrink"
+          >
             {roleTabs.map((tab) => (
               <button
                 key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`px-4 py-1.5 text-xs font-bold transition-all rounded-md whitespace-nowrap ${
+                ref={(el) => {
+                  tabBtnRefs.current[tab] = el;
+                }}
+                onClick={() => {
+                  setActiveTab(tab);
+                  centerActiveTab(tab);
+                }}
+                className={`px-4 py-1.5 text-xs font-black transition-all rounded-lg whitespace-nowrap shrink-0 cursor-pointer ${
                   activeTab === tab
-                    ? 'bg-primary text-on-primary shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                    ? 'bg-primary text-on-primary shadow-sm font-black'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
                 }`}
               >
                 {tab}
@@ -336,7 +365,7 @@ export function StaffView() {
           size="md"
         >
           <form onSubmit={handleSubmitPayment} className="space-y-5 font-sans">
-            
+
             <div className="space-y-1.5">
               <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex justify-between">
                 <span>{t('hr.currentPendingDues')}</span>

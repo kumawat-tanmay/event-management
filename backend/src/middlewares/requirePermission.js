@@ -49,9 +49,13 @@ const hasMatchingPermission = (userPermissions, requiredPermission) => {
 const requirePermission = (requiredPermission) => {
   return async (req, res, next) => {
     try {
-      // 1. Ensure user is authenticated
+      // 1. Ensure user is authenticated and active
       if (!req.user) {
         return res.status(401).json({ success: false, message: 'Not authorized' });
+      }
+
+      if (req.user.isDeleted || !req.user.isActive || req.user.status === 'Inactive') {
+        return res.status(401).json({ success: false, message: 'Access denied. Account is disabled or deleted' });
       }
 
       const rawRole = req.user.role;

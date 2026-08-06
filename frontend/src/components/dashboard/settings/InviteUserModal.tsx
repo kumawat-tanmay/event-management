@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 import { userService } from '@/lib/services/user.services';
 import { roleService, Role } from '@/lib/services/role.services';
 import { useTranslation } from 'react-i18next';
+import { useAuth } from '@/hooks/useAuth';
 
 interface InviteUserModalProps {
   isOpen: boolean;
@@ -16,8 +17,12 @@ interface InviteUserModalProps {
 
 export function InviteUserModal({ isOpen, onClose, onSuccess }: InviteUserModalProps) {
   const { t } = useTranslation();
+  const { role: currentUserRole } = useAuth();
   const { data: roles } = useSWR<Role[]>('roles', roleService.getRoles);
   
+  // Display all system and custom roles (including Owner)
+  const availableRoles = roles || [];
+
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [role, setRole] = useState('');
@@ -96,7 +101,7 @@ export function InviteUserModal({ isOpen, onClose, onSuccess }: InviteUserModalP
                 className="flex h-10 w-full rounded-md border border-input bg-background text-foreground px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <option value="" disabled className="bg-background text-foreground">{t('profile.selectRole', 'Select a role...')}</option>
-                {roles?.map(r => (
+                {availableRoles.map(r => (
                   <option key={r._id} value={r.name} className="bg-background text-foreground">{r.name}</option>
                 ))}
               </select>

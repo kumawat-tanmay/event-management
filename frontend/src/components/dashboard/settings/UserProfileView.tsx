@@ -312,7 +312,7 @@ export function UserProfileView() {
                       className="flex h-10 w-full rounded-xl border border-input bg-background text-foreground px-3.5 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring font-medium"
                     >
                       <option value="" disabled>Select role...</option>
-                      {roles?.map(r => (
+                      {(roles || []).map(r => (
                         <option key={r._id} value={r.name}>{r.name}</option>
                       ))}
                     </select>

@@ -24,8 +24,8 @@ const protect = async (req, res, next) => {
       return res.status(401).json({ success: false, message: 'Not authorized, user not found' });
     }
 
-    if (req.user.isDeleted || !req.user.isActive) {
-      return res.status(401).json({ success: false, message: 'Not authorized, user account disabled' });
+    if (req.user.isDeleted || !req.user.isActive || req.user.status === 'Inactive') {
+      return res.status(401).json({ success: false, message: 'Not authorized, user account disabled or deleted' });
     }
 
     // Resolve permissions from Role document so downstream middleware/controllers have accurate data

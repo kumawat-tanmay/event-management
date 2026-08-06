@@ -232,12 +232,8 @@ const DEFAULT_ROLES = {
   },
   admin: {
     name: 'Admin',
-    description: 'Senior Administrator handling platform tools, bookings, and operations.',
-    permissions: [
-      'dashboard.view', 'calendar.*', 'crm.*', 'quotations.*', 'bookings.*', 'warehouses.*',
-      'inventory.*', 'operations.*', 'finance.*', 'purchases.*', 'hr.*',
-      'reports.view', 'users.*', 'roles.*', 'company.update'
-    ],
+    description: 'Senior Administrator with full unrestricted access across the entire ERP.',
+    permissions: [PERMISSIONS.ALL],
     isSystem: true
   },
   manager: {

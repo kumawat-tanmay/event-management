@@ -33,24 +33,11 @@ const inviteUser = async (req, res) => {
     }
 
     const normalizedEmail = email.trim().toLowerCase();
-    const userExists = await User.findOne({ email: normalizedEmail }).collation({ locale: 'en', strength: 2 }).lean();
-    if (userExists) {
-      return res.status(400).json({ success: false, message: 'User with this email already exists' });
-    }
+    const existingUser = await User.findOne({ email: normalizedEmail }).collation({ locale: 'en', strength: 2 });
 
     const assignedRole = await Role.findOne({ name: role, isDeleted: false });
-    if (!assignedRole) {
-      return res.status(404).json({ success: false, message: 'Role not found' });
-    }
-
-    // Security: Prevent assigning Owner role or wildcard role unless inviter is Owner / has wildcard permission
-    if (assignedRole.name === 'Owner' && req.user.role !== 'Owner') {
-      return res.status(403).json({ success: false, message: 'Only an Owner can invite another Owner' });
-    }
-
-    if (assignedRole.permissions.includes('*') && !req.user.permissions?.includes('*')) {
-      return res.status(403).json({ success: false, message: 'You do not have permission to assign wildcard roles' });
-    }
+    const targetRoleName = assignedRole ? assignedRole.name : role;
+    const targetPermissions = assignedRole ? assignedRole.permissions : (role === 'Owner' ? ['*'] : []);
 
     // Generate a secure dummy password
     const dummyPassword = crypto.randomBytes(4).toString('hex'); // 8 char string
@@ -59,16 +46,36 @@ const inviteUser = async (req, res) => {
     const expireDate = new Date();
     expireDate.setDate(expireDate.getDate() + 1);
 
-    const user = await User.create({
-      name,
-      email: normalizedEmail,
-      password: dummyPassword,
-      role: assignedRole.name,
-      permissions: assignedRole.permissions,
-      status: 'Pending',
-      inviteExpiresAt: expireDate,
-      invitedBy: req.user ? req.user._id : undefined,
-    });
+    let user;
+
+    if (existingUser) {
+      if (!existingUser.isDeleted) {
+        return res.status(400).json({ success: false, message: 'User with this email already exists' });
+      }
+
+      // Re-activate soft-deleted user (Re-hired employee)
+      existingUser.name = name;
+      existingUser.password = dummyPassword;
+      existingUser.role = targetRoleName;
+      existingUser.permissions = targetPermissions;
+      existingUser.status = 'Pending';
+      existingUser.isActive = true;
+      existingUser.isDeleted = false;
+      existingUser.inviteExpiresAt = expireDate;
+      existingUser.invitedBy = req.user ? req.user._id : undefined;
+      user = await existingUser.save();
+    } else {
+      user = await User.create({
+        name,
+        email: normalizedEmail,
+        password: dummyPassword,
+        role: targetRoleName,
+        permissions: targetPermissions,
+        status: 'Pending',
+        inviteExpiresAt: expireDate,
+        invitedBy: req.user ? req.user._id : undefined,
+      });
+    }
 
     // Auto-create corresponding Staff record for the invited user
     try {
@@ -82,7 +89,7 @@ const inviteUser = async (req, res) => {
       });
       if (!existingStaff) {
         const staffCount = await Staff.countDocuments();
-        const staffRole = assignedRole.name || 'Admin';
+        const staffRole = targetRoleName || 'Admin';
         await Staff.create({
           staffId: `STF-${String(staffCount + 1).padStart(3, '0')}`,
           name: user.name,
@@ -176,21 +183,11 @@ const updateUser = async (req, res) => {
 
     if (role && role !== user.role) {
       const assignedRole = await Role.findOne({ name: role, isDeleted: false });
-      if (!assignedRole) {
-        return res.status(404).json({ success: false, message: 'Role not found' });
-      }
+      const targetRoleName = assignedRole ? assignedRole.name : role;
+      const targetPermissions = assignedRole ? assignedRole.permissions : (role === 'Owner' ? ['*'] : []);
 
-      // Security check: Only Owner can assign Owner role
-      if (assignedRole.name === 'Owner' && req.user.role !== 'Owner') {
-        return res.status(403).json({ success: false, message: 'Only an Owner can assign the Owner role' });
-      }
-
-      if (assignedRole.permissions.includes('*') && !req.user.permissions?.includes('*')) {
-        return res.status(403).json({ success: false, message: 'You do not have permission to assign wildcard roles' });
-      }
-
-      user.role = assignedRole.name;
-      user.permissions = assignedRole.permissions;
+      user.role = targetRoleName;
+      user.permissions = targetPermissions;
     }
 
     const updatedUser = await user.save();
@@ -233,7 +230,19 @@ const deleteUser = async (req, res) => {
 
     // Soft delete
     user.isDeleted = true;
+    user.isActive = false;
+    user.status = 'Inactive';
     await user.save();
+
+    // Emit real-time socket event if online to immediately disconnect active sessions
+    try {
+      const io = req.app.get('io');
+      if (io) {
+        io.emit('user:deleted', { userId: user._id.toString() });
+      }
+    } catch (sockErr) {
+      console.error('Failed to emit socket user:deleted event:', sockErr);
+    }
 
     // Soft delete corresponding Staff record if exists
     try {
@@ -241,6 +250,7 @@ const deleteUser = async (req, res) => {
       const staff = await Staff.findOne({ email: user.email, isDeleted: false });
       if (staff) {
         staff.isDeleted = true;
+        staff.status = 'Inactive';
         await staff.save();
       }
     } catch (staffErr) {

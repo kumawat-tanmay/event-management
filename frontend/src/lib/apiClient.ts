@@ -149,12 +149,15 @@ apiClient.interceptors.response.use(
       }
     }
 
-    const isGenuineAuthFailure = error.response?.status === 401 && (
+    const isGenuineAuthFailure = (error.response?.status === 401 || error.response?.status === 403) && (
       resData?.message?.toLowerCase().includes('no longer exists') ||
       resData?.message?.toLowerCase().includes('jwt expired') ||
       resData?.message?.toLowerCase().includes('invalid signature') ||
       resData?.message?.toLowerCase().includes('invalid token') ||
-      resData?.message?.toLowerCase().includes('not authorized')
+      resData?.message?.toLowerCase().includes('not authorized') ||
+      resData?.message?.toLowerCase().includes('disabled') ||
+      resData?.message?.toLowerCase().includes('deleted') ||
+      resData?.message?.toLowerCase().includes('inactive')
     );
 
     if ((isGenuineAuthFailure || isDeactivated)) {

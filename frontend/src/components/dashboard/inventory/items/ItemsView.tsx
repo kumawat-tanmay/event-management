@@ -26,14 +26,34 @@ export function ItemsView() {
   // ponytail: removed unnecessary warehouse fetch and zoneId mapping for item category
 
   // Fetch Items
-  const { data: itemsResponse, error: itemsError, isLoading: itemsLoading, mutate } = useSWR('items-list', () => 
+  const { data: itemsResponse, error: itemsError, isLoading: itemsLoading, mutate } = useSWR('items-list', () =>
     inventoryService.getItems({ limit: 100 })
   );
 
   const items = itemsResponse?.data || [];
 
-  // Generate status tabs dynamically
+  // Status tabs setup with centering refs
   const dynamicTabs = ['ALL ITEMS', 'AVAILABLE', 'LOW STOCK ALERT', 'INACTIVE'];
+  const tabNavRef = React.useRef<HTMLDivElement>(null);
+  const tabBtnRefs = React.useRef<{ [key: string]: HTMLButtonElement | null }>({});
+
+  const centerActiveTab = React.useCallback((tab: string) => {
+    const container = tabNavRef.current;
+    const target = tabBtnRefs.current[tab];
+    if (container && target) {
+      const scrollLeft = target.offsetLeft - (container.clientWidth / 2) + (target.offsetWidth / 2);
+      container.scrollTo({ left: scrollLeft, behavior: 'smooth' });
+    }
+  }, []);
+
+  React.useEffect(() => {
+    if (activeTab) {
+      const timer = setTimeout(() => {
+        centerActiveTab(activeTab);
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [activeTab, centerActiveTab]);
 
   const handleDeleteClick = (id: string) => {
     setItemToDelete(id);
@@ -57,7 +77,7 @@ export function ItemsView() {
   const filteredData = items.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.code.toLowerCase().includes(searchQuery.toLowerCase());
-    
+
     let matchesTab = true;
     if (activeTab === 'AVAILABLE') {
       matchesTab = item.isActive && (item.totalStock > item.minStockAlert || item.minStockAlert === 0);
@@ -104,22 +124,22 @@ export function ItemsView() {
         </span>
       )
     },
-    { 
-      header: t('item.damaged', 'Damaged'), 
-      accessorKey: 'damagedStock', 
-      cell: (row: Item) => <span className="font-bold text-error">{row.damagedStock}</span> 
+    {
+      header: t('item.damaged', 'Damaged'),
+      accessorKey: 'damagedStock',
+      cell: (row: Item) => <span className="font-bold text-error">{row.damagedStock}</span>
     },
-    { 
-      header: t('item.status', 'Status'), 
-      accessorKey: 'status', 
+    {
+      header: t('item.status', 'Status'),
+      accessorKey: 'status',
       cell: (row: Item) => {
         const isLow = row.totalStock <= row.minStockAlert && row.minStockAlert > 0;
         return <StatusBadge status={isLow ? 'Low Stock Alert' : row.isActive ? 'Available' : 'Inactive'} />;
       }
     },
     {
-      header: t('roles.actions', 'Actions'), 
-      accessorKey: 'actions', 
+      header: t('roles.actions', 'Actions'),
+      accessorKey: 'actions',
       cell: (row: Item) => (
         <div className="flex items-center justify-center gap-2">
           <Link href={`/inventory/items/${row._id}`}>
@@ -234,23 +254,30 @@ export function ItemsView() {
               </div>
 
               {/* Status Tabs */}
-              <div className="flex w-full xl:w-auto overflow-x-auto pb-2 -mb-2 scrollbar-none [&::-webkit-scrollbar]:hidden">
-                <div className="flex space-x-1 bg-muted/50 p-1 rounded-lg w-max">
-                  {dynamicTabs.map((tab) => (
-                    <button
-                      key={tab}
-                      onClick={() => setActiveTab(tab)}
-                      className={cn(
-                        "px-4 py-1.5 text-xs font-black uppercase tracking-widest rounded-md transition-all whitespace-nowrap",
-                        activeTab === tab
-                          ? "bg-primary text-on-primary shadow-md"
-                          : "text-muted-foreground hover:text-foreground hover:bg-card"
-                      )}
-                    >
-                      {tab === 'ALL ITEMS' ? t('item.all', 'ALL ITEMS') : tab}
-                    </button>
-                  ))}
-                </div>
+              <div
+                ref={tabNavRef}
+                className="relative flex items-center bg-muted/50 p-1.5 rounded-xl overflow-x-auto flex-nowrap max-w-full md:max-w-md lg:max-w-lg [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] shrink"
+              >
+                {dynamicTabs.map((tab) => (
+                  <button
+                    key={tab}
+                    ref={(el) => {
+                      tabBtnRefs.current[tab] = el;
+                    }}
+                    onClick={() => {
+                      setActiveTab(tab);
+                      centerActiveTab(tab);
+                    }}
+                    className={cn(
+                      "px-4 py-1.5 text-xs font-black uppercase tracking-widest rounded-lg transition-all whitespace-nowrap shrink-0 cursor-pointer",
+                      activeTab === tab
+                        ? "bg-primary text-on-primary shadow-md font-black"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                    )}
+                  >
+                    {tab === 'ALL ITEMS' ? t('item.all', 'ALL ITEMS') : tab}
+                  </button>
+                ))}
               </div>
 
               {/* Filters */}
