@@ -1,6 +1,6 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import Cookies from 'js-cookie';
-import { AuthUser, TOKEN_KEY, USER_KEY } from '@/lib/apiClient';
+import { AuthUser, TOKEN_KEY, USER_KEY, CSRF_TOKEN_KEY, setCsrfToken } from '@/lib/apiClient';
 
 /**
  * 🔒 Advanced Auth Slice
@@ -33,6 +33,9 @@ const authSlice = createSlice({
     initializeAuth: (state) => {
       if (typeof window === 'undefined') return;
 
+      // Legacy cleanup: remove old role cookie (now stored in localStorage)
+      Cookies.remove('krishna_user_role', { path: '/' });
+
       const token = Cookies.get(TOKEN_KEY);
       const userRaw = localStorage.getItem(USER_KEY);
       const expiry = localStorage.getItem(TOKEN_EXPIRY_KEY);
@@ -42,7 +45,7 @@ const authSlice = createSlice({
           localStorage.removeItem(USER_KEY);
           localStorage.removeItem(TOKEN_EXPIRY_KEY);
           Cookies.remove(TOKEN_KEY, { path: '/' });
-          Cookies.remove('krishna_user_role', { path: '/' });
+          localStorage.removeItem('krishna_user_role');
           state.isInitialized = true;
           return;
         }
@@ -56,16 +59,15 @@ const authSlice = createSlice({
           Cookies.set(TOKEN_KEY, token, {
             expires: 30, path: '/', sameSite: 'strict', secure: process.env.NEXT_PUBLIC_SECURE_COOKIES === 'true'
           });
-          Cookies.set('krishna_user_role', user.role, {
-            expires: 30, path: '/', sameSite: 'strict', secure: process.env.NEXT_PUBLIC_SECURE_COOKIES === 'true'
-          });
+          const initRoleStr = typeof user.role === 'object' && user.role !== null ? user.role.name : user.role;
+          localStorage.setItem('krishna_user_role', initRoleStr as string);
         }
       } catch (error) {
         console.error('Auth sync failed:', error);
         localStorage.removeItem(USER_KEY);
         localStorage.removeItem(TOKEN_EXPIRY_KEY);
         Cookies.remove(TOKEN_KEY);
-        Cookies.remove('krishna_user_role');
+        localStorage.removeItem('krishna_user_role');
       } finally {
         state.isInitialized = true;
       }
@@ -89,9 +91,7 @@ const authSlice = createSlice({
         });
         
         const roleStr = typeof user.role === 'object' && user.role !== null ? user.role.name : user.role;
-        Cookies.set('krishna_user_role', roleStr as string, {
-          expires: cookieExpireDays, path: '/', sameSite: 'strict', secure: process.env.NEXT_PUBLIC_SECURE_COOKIES === 'true'
-        });
+        localStorage.setItem('krishna_user_role', roleStr as string);
       }
     },
 
@@ -108,9 +108,7 @@ const authSlice = createSlice({
         
         if (action.payload.role) {
           const roleStr = typeof action.payload.role === 'object' && action.payload.role !== null ? action.payload.role.name : action.payload.role;
-          Cookies.set('krishna_user_role', roleStr as string, {
-            expires: 30, path: '/', sameSite: 'strict', secure: process.env.NEXT_PUBLIC_SECURE_COOKIES === 'true'
-          });
+          localStorage.setItem('krishna_user_role', roleStr as string);
         }
       }
     },
@@ -123,16 +121,14 @@ const authSlice = createSlice({
       if (typeof window !== 'undefined') {
         localStorage.removeItem(USER_KEY);
         localStorage.removeItem(TOKEN_EXPIRY_KEY);
+        sessionStorage.removeItem(CSRF_TOKEN_KEY);
+        setCsrfToken(null);
         Cookies.remove(TOKEN_KEY, {
           path: '/',
           sameSite: 'strict',
           secure: process.env.NEXT_PUBLIC_SECURE_COOKIES === 'true'
         });
-        Cookies.remove('krishna_user_role', {
-          path: '/',
-          sameSite: 'strict',
-          secure: process.env.NEXT_PUBLIC_SECURE_COOKIES === 'true'
-        });
+        localStorage.removeItem('krishna_user_role');
       }
     },
 

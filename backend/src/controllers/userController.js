@@ -41,7 +41,7 @@ const inviteUser = async (req, res) => {
 
     // Generate a secure dummy password
     const dummyPassword = crypto.randomBytes(4).toString('hex'); // 8 char string
-
+    
     // Set invite expiration (1 day from now)
     const expireDate = new Date();
     expireDate.setDate(expireDate.getDate() + 1);
@@ -79,12 +79,12 @@ const inviteUser = async (req, res) => {
     // Auto-create corresponding Staff record for the invited user
     try {
       const Staff = require('../models/Staff');
-      const existingStaff = await Staff.findOne({
+      const existingStaff = await Staff.findOne({ 
         $or: [
           { email: normalizedEmail },
           { name: user.name }
-        ],
-        isDeleted: false
+        ], 
+        isDeleted: false 
       });
       if (!existingStaff) {
         const staffCount = await Staff.countDocuments();
@@ -120,17 +120,17 @@ const inviteUser = async (req, res) => {
     } catch (emailError) {
       console.error('Email sending failed:', emailError);
       // We don't fail the user creation if email fails, but we should inform the frontend
-      return res.status(201).json({
-        success: true,
-        data: { _id: user._id, name: user.name, email: user.email, role: user.role, isActive: user.isActive, createdAt: user.createdAt },
-        message: 'User created successfully, but email failed to send. Password is: ' + dummyPassword
+      return res.status(201).json({ 
+        success: true, 
+        data: { _id: user._id, name: user.name, email: user.email, role: user.role, isActive: user.isActive, createdAt: user.createdAt }, 
+        message: 'User created successfully, but email failed to send. Password is: ' + dummyPassword 
       });
     }
 
-    res.status(201).json({
-      success: true,
-      data: { _id: user._id, name: user.name, email: user.email, role: user.role, isActive: user.isActive, createdAt: user.createdAt },
-      message: 'User invited successfully and email sent'
+    res.status(201).json({ 
+      success: true, 
+      data: { _id: user._id, name: user.name, email: user.email, role: user.role, isActive: user.isActive, createdAt: user.createdAt }, 
+      message: 'User invited successfully and email sent' 
     });
   } catch (error) {
     console.error('Error inviting user:', error);

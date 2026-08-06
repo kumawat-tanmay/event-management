@@ -11,8 +11,6 @@ import { Toaster } from 'react-hot-toast';
 import StoreProvider from "@/provider/StoreProvider";
 import GoogleAuthProvider from "@/provider/GoogleAuthProvider";
 import I18nProvider from "@/provider/I18nProvider";
-// import AutoScrollToTop from "@/components/common/AutoScrollToTop";
-// import InstallPWAButton from "@/components/common/InstallPWAButton";
 import { buildMetadata } from "@/utils/seoConfig";
 
 const inter = Inter({
@@ -51,50 +49,49 @@ export default function RootLayout({
         >
           <StoreProvider>
             <GoogleAuthProvider>
-            {/* <AutoScrollToTop /> */}
-            <Toaster
-              position="top-right"
-              toastOptions={{
-                className: 'font-sans font-medium text-sm tracking-tight shadow-2xl rounded-xl border border-border',
-                duration: 5000,
-                style: {
-                  padding: '16px 24px',
-                  color: '#fff',
-                },
-                success: {
+              <Toaster
+                position="top-right"
+                toastOptions={{
+                  className: 'font-sans font-medium text-sm tracking-tight shadow-2xl rounded-xl border border-border',
+                  duration: 5000,
                   style: {
-                    background: '#059669', // Emerald Green
-                    boxShadow: '0 10px 15px -3px rgba(16, 185, 129, 0.4)',
+                    padding: '16px 24px',
+                    color: '#fff',
                   },
-                  iconTheme: {
-                    primary: '#fff',
-                    secondary: '#059669',
+                  success: {
+                    style: {
+                      background: '#059669', // Emerald Green
+                      boxShadow: '0 10px 15px -3px rgba(16, 185, 129, 0.4)',
+                    },
+                    iconTheme: {
+                      primary: '#fff',
+                      secondary: '#059669',
+                    },
                   },
-                },
-                error: {
-                  style: {
-                    background: '#dc2626', // Coral Red
-                    boxShadow: '0 10px 15px -3px rgba(239, 68, 68, 0.4)',
+                  error: {
+                    style: {
+                      background: '#dc2626', // Coral Red
+                      boxShadow: '0 10px 15px -3px rgba(239, 68, 68, 0.4)',
+                    },
+                    iconTheme: {
+                      primary: '#fff',
+                      secondary: '#dc2626',
+                    },
                   },
-                  iconTheme: {
-                    primary: '#fff',
-                    secondary: '#dc2626',
+                  loading: {
+                    style: {
+                      background: '#d97706', // Amber 600
+                      boxShadow: '0 10px 15px -3px rgba(217, 119, 6, 0.4)',
+                    },
                   },
-                },
-                loading: {
-                  style: {
-                    background: '#d97706', // Amber 600
-                    boxShadow: '0 10px 15px -3px rgba(217, 119, 6, 0.4)',
-                  },
-                },
-              }}
-            />
+                }}
+              />
 
-            <I18nProvider>
-              <HydrationGuard>
-                {children}
-              </HydrationGuard>
-            </I18nProvider>
+              <I18nProvider>
+                <HydrationGuard>
+                  {children}
+                </HydrationGuard>
+              </I18nProvider>
             </GoogleAuthProvider>
           </StoreProvider>
         </ThemeProvider>

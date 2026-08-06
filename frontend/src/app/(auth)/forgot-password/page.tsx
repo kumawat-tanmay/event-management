@@ -3,10 +3,13 @@ import { Metadata } from 'next';
 import AuthSplitLayout from '@/components/auth/AuthSplitLayout';
 import ForgotPasswordForm from '@/components/auth/ForgotPasswordForm';
 
-export const metadata: Metadata = {
-  title: 'Forgot Password - Krishna Tent & Events ERP',
+import { buildMetadata } from '@/utils/seoConfig';
+
+export const metadata: Metadata = buildMetadata({
+  title: 'Forgot Password',
   description: 'Reset your password for Krishna Tent & Events ERP.',
-};
+  url: '/forgot-password',
+});
 
 export default function ForgotPasswordPage() {
   return (

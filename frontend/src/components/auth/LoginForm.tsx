@@ -116,7 +116,7 @@ export default function LoginForm() {
         )}
         {isGoogleLoading ? t('auth.connecting', 'Connecting...') : t('auth.signInGoogle')}
       </button>
-
+ 
       {/* ── Divider ── */}
       <div className="relative flex items-center">
         <div className="flex-grow border-t border-border"></div>
@@ -151,7 +151,7 @@ export default function LoginForm() {
             />
           </div>
         </div>
-
+ 
         {/* Password */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">

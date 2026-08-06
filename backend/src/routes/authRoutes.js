@@ -5,7 +5,8 @@ const {
   getMe, 
   googleAuth, 
   forgotPassword, 
-  resetPassword 
+  resetPassword,
+  logoutUser
 } = require('../controllers/authController');
 const { protect } = require('../middlewares/authMiddleware');
 const { 
@@ -30,6 +31,7 @@ router.use(generalAuthLimiter);
 // Specific rate limiters for individual auth actions
 router.post('/login', loginLimiter, validate(loginSchema), loginUser);
 router.post('/google', googleAuthLimiter, validate(googleAuthSchema), googleAuth);
+router.post('/logout', logoutUser);
 router.post('/forgotpassword', forgotPasswordLimiter, validate(forgotPasswordSchema), forgotPassword);
 router.put('/resetpassword/:resettoken', resetPasswordLimiter, validate(resetPasswordSchema), resetPassword);
 router.get('/me', protect, getMe);

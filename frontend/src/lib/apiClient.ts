@@ -68,19 +68,42 @@ const apiClient = axios.create({
   withCredentials: true // Required for CSRF cookies to be sent and received
 });
 
+export const CSRF_TOKEN_KEY = 'krishna_csrf_token';
+
 let csrfToken: string | null = null;
 let isFetchingCsrf = false;
 let csrfPromise: Promise<string> | null = null;
 
+export const setCsrfToken = (token: string | null) => {
+  csrfToken = token;
+  if (typeof window !== 'undefined') {
+    if (token) {
+      sessionStorage.setItem(CSRF_TOKEN_KEY, token);
+    } else {
+      sessionStorage.removeItem(CSRF_TOKEN_KEY);
+    }
+  }
+};
+
 // Function to fetch CSRF token from backend
 const fetchCsrfToken = async (): Promise<string> => {
   if (csrfToken) return csrfToken;
+  if (typeof window !== 'undefined') {
+    const storedToken = sessionStorage.getItem(CSRF_TOKEN_KEY);
+    if (storedToken) {
+      csrfToken = storedToken;
+      return csrfToken;
+    }
+  }
   if (isFetchingCsrf && csrfPromise) return csrfPromise;
 
   isFetchingCsrf = true;
   csrfPromise = axios.get(`${getBackendBaseUrl()}/csrf-token`, { withCredentials: true })
     .then(res => {
       csrfToken = res.data.csrfToken;
+      if (typeof window !== 'undefined' && csrfToken) {
+        sessionStorage.setItem(CSRF_TOKEN_KEY, csrfToken);
+      }
       isFetchingCsrf = false;
       return csrfToken as string;
     })
@@ -97,11 +120,15 @@ const fetchCsrfToken = async (): Promise<string> => {
 apiClient.interceptors.request.use(
   async (config) => {
     if (typeof window !== 'undefined') {
-      // 0. Inject CSRF Token for state-changing requests
+      // 0. Inject CSRF Token for state-changing requests (skip login/google — they generate their own)
       if (config.method && ['post', 'put', 'patch', 'delete'].includes(config.method.toLowerCase())) {
-        const token = await fetchCsrfToken();
-        if (token) {
-          config.headers['x-csrf-token'] = token;
+        const url = config.url || '';
+        const isAuthEndpoint = url.includes('/auth/login') || url.includes('/auth/google');
+        if (!isAuthEndpoint) {
+          const token = await fetchCsrfToken();
+          if (token) {
+            config.headers['x-csrf-token'] = token;
+          }
         }
       }
 
@@ -127,17 +154,17 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const resData = error.response?.data;
-
+    
     // 1. Smart logout: Only logout when the token itself is expired/invalid
     const isDeactivated = error.response?.status === 403 && resData?.message?.toLowerCase().includes('deactivated');
 
     // 1.5 Handle CSRF Token Expiration (403/400 Forbidden with CSRF message)
-    const isCsrfFailure = (error.response?.status === 403 || error.response?.status === 400) &&
+    const isCsrfFailure = (error.response?.status === 403 || error.response?.status === 400) && 
       resData?.message?.toLowerCase().includes('csrf');
     if (isCsrfFailure && !error.config._retry) {
       error.config._retry = true;
-      csrfToken = null; // Force clear the stale token
-
+      setCsrfToken(null); // Force clear the stale token in memory and sessionStorage
+      
       try {
         const newToken = await fetchCsrfToken();
         if (newToken) {
@@ -163,13 +190,14 @@ apiClient.interceptors.response.use(
 
     if ((isGenuineAuthFailure || isDeactivated)) {
       if (typeof window !== 'undefined') {
+        setCsrfToken(null);
         const cookieOptions: Cookies.CookieAttributes = {
           path: '/',
           sameSite: 'strict',
           secure: process.env.NEXT_PUBLIC_SECURE_COOKIES === 'true'
         };
         Cookies.remove(TOKEN_KEY, cookieOptions);
-        Cookies.remove('krishna_user_role', cookieOptions);
+        localStorage.removeItem('krishna_user_role');
         localStorage.removeItem(USER_KEY);
         localStorage.removeItem('krishna_token_expiry');
 

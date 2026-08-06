@@ -78,7 +78,7 @@ if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === undefined
   app.use(morgan(':id :method :url :status :response-time ms - :res[content-length]'));
 }
 
-const { csrfTokenHandler, verifyCsrfToken } = require('./middlewares/csrfMiddleware');
+const { generateAndSetCsrfCookie, verifyCsrfToken } = require('./middlewares/csrfMiddleware');
 const connectDB = require('./config/db');
 
 // Ensure database is connected before processing any requests (especially on Vercel Serverless)
@@ -91,15 +91,18 @@ app.use(async (req, res, next) => {
   }
 });
 
-// API Routes
+// CSRF Token endpoint — MUST be registered BEFORE verifyCsrfToken middleware
+app.get('/api/csrf-token', (req, res) => {
+  let secret = req.cookies?.['csrf-secret'];
+  if (!secret) {
+    secret = generateAndSetCsrfCookie(res);
+  }
+  res.json({ success: true, csrfToken: secret });
+});
+
+// API Routes (CSRF verification applied to all /api/* routes)
 const routes = require('./routes');
 app.use('/api', verifyCsrfToken, routes);
-
-// CSRF Token endpoint (for frontend compatibility)
-app.get('/api/csrf-token', csrfTokenHandler, (req, res) => {
-  const token = req.cookies?.['csrf-secret'] || req.cookies?.['XSRF-TOKEN'] || 'csrf_valid';
-  res.json({ success: true, csrfToken: token });
-});
 
 // Base route
 app.get('/', (req, res) => {

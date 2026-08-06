@@ -1,10 +1,13 @@
 import React from 'react';
-import RolesView from '@/components/dashboard/settings/RolesView';
 import { Metadata } from 'next';
+import RolesView from '@/components/dashboard/settings/RolesView';
+import { buildMetadata } from '@/utils/seoConfig';
 
-export const metadata: Metadata = {
-  title: 'Roles & Permissions - ERP Settings',
-};
+export const metadata: Metadata = buildMetadata({
+  title: 'Roles & Permissions',
+  description: 'Manage RBAC system roles, granular module permissions, and access controls.',
+  url: '/settings/roles',
+});
 
 export default function RolesPage() {
   return <RolesView />;

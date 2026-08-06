@@ -3,10 +3,13 @@ import { Metadata } from 'next';
 import AuthSplitLayout from '@/components/auth/AuthSplitLayout';
 import ResetPasswordForm from '@/components/auth/ResetPasswordForm';
 
-export const metadata: Metadata = {
-  title: 'Reset Password - Krishna Tent & Events ERP',
-  description: 'Set a new password for your Krishna Tent & Events ERP account.',
-};
+import { buildMetadata } from '@/utils/seoConfig';
+
+export const metadata: Metadata = buildMetadata({
+  title: 'Reset Password',
+  description: 'Set a new secure password for your Krishna Tent & Events ERP account.',
+  url: '/reset-password',
+});
 
 export default function ResetPasswordPage() {
   return (

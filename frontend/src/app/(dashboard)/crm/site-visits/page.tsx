@@ -1,9 +1,12 @@
+import { Metadata } from 'next';
 import { SiteVisitsView } from '@/components/dashboard/crm/site-visits/SiteVisitsView';
+import { buildMetadata } from '@/utils/seoConfig';
 
-export const metadata = {
-  title: 'Site Visits | Krishna Events ERP',
-  description: 'Manage venue inspections and schedules',
-};
+export const metadata: Metadata = buildMetadata({
+  title: 'Site Visits Scheduler',
+  description: 'Schedule and track venue site inspections, measurements, and customer meetings.',
+  url: '/crm/site-visits',
+});
 
 export default function SiteVisitsPage() {
   return <SiteVisitsView />;

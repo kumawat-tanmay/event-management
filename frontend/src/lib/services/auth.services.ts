@@ -1,8 +1,11 @@
-import apiClient from '../apiClient';
+import apiClient, { setCsrfToken } from '../apiClient';
 
 export const authService = {
   login: async (email: string, password: string) => {
     const response = await apiClient.post('/auth/login', { email, password });
+    if (response.data?.data?.csrfToken) {
+      setCsrfToken(response.data.data.csrfToken);
+    }
     return response.data;
   },
 
@@ -11,14 +14,22 @@ export const authService = {
     return response.data;
   },
 
-  logout: () => {
-    // the logout is fully handled by AuthContext now (removes cookie)
-    // we just have an empty service method if we ever need backend invalidation
+  logout: async () => {
+    try {
+      await apiClient.post('/auth/logout');
+    } catch (e) {
+      // Ignore network error during logout
+    } finally {
+      setCsrfToken(null);
+    }
   },
 
   googleLogin: async (accessToken: string) => {
     // Backend receives this as 'code' field and uses it as access_token
     const response = await apiClient.post('/auth/google', { code: accessToken });
+    if (response.data?.data?.csrfToken) {
+      setCsrfToken(response.data.data.csrfToken);
+    }
     return response.data;
   },
 

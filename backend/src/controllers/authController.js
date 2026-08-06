@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { OAuth2Client } = require('google-auth-library');
 const sendEmail = require('../utils/sendEmail');
+const { generateAndSetCsrfCookie, clearCsrfCookie } = require('../middlewares/csrfMiddleware');
 
 const googleClient = new OAuth2Client(
   process.env.GOOGLE_CLIENT_ID,
@@ -71,6 +72,9 @@ const loginUser = async (req, res) => {
 
       const { roleName, permissions } = await resolveUserRoleAndPermissions(user);
 
+      // Generate fresh 30-day CSRF secret token on login via central middleware helper
+      const csrfSecret = generateAndSetCsrfCookie(res);
+
       res.json({
         success: true,
         data: {
@@ -81,6 +85,7 @@ const loginUser = async (req, res) => {
           permissions: permissions,
           avatar: user.avatar || null,
           token: generateToken(user._id),
+          csrfToken: csrfSecret,
         },
         message: 'Login successful'
       });
@@ -154,15 +159,15 @@ const googleAuth = async (req, res) => {
     const normalizedEmail = email.trim().toLowerCase();
 
     // 🔒 STRICT INVITE-ONLY: User MUST exist in the database beforehand!
-    let user = await User.findOne({
-      email: normalizedEmail,
-      isDeleted: false
+    let user = await User.findOne({ 
+      email: normalizedEmail, 
+      isDeleted: false 
     }).collation({ locale: 'en', strength: 2 });
 
     if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: 'No account found for this Google email. You must be invited by an administrator to access the system.'
+      return res.status(401).json({ 
+        success: false, 
+        message: 'No account found for this Google email. You must be invited by an administrator to access the system.' 
       });
     }
 
@@ -197,6 +202,9 @@ const googleAuth = async (req, res) => {
 
     const { roleName, permissions } = await resolveUserRoleAndPermissions(user);
 
+    // Generate fresh 30-day CSRF secret token on Google login via central middleware helper
+    const csrfSecret = generateAndSetCsrfCookie(res);
+
     res.json({
       success: true,
       data: {
@@ -207,6 +215,7 @@ const googleAuth = async (req, res) => {
         permissions: permissions,
         avatar: user.avatar || null,
         token: generateToken(user._id),
+        csrfToken: csrfSecret,
       },
       message: 'Google Login successful'
     });
@@ -226,7 +235,8 @@ const forgotPassword = async (req, res) => {
     const user = await User.findOne({ email, isDeleted: false });
 
     if (!user) {
-      return res.status(404).json({ success: false, message: 'There is no user with that email' });
+      // 🔒 Security: Don't reveal whether email exists — return same response
+      return res.status(200).json({ success: true, message: 'If an account with that email exists, a password reset link has been sent' });
     }
 
     // Get reset token
@@ -291,11 +301,15 @@ const resetPassword = async (req, res) => {
     user.resetPasswordExpire = undefined;
     await user.save();
 
+    // Generate CSRF cookie for auto-login after reset
+    const csrfSecret = generateAndSetCsrfCookie(res);
+
     res.json({
       success: true,
       message: 'Password has been reset successfully',
       data: {
-        token: generateToken(user._id)
+        token: generateToken(user._id),
+        csrfToken: csrfSecret,
       }
     });
   } catch (error) {
@@ -362,7 +376,6 @@ const updateProfile = async (req, res) => {
         dob: user.dob || null,
         gender: user.gender || '',
         description: user.description || '',
-        token: generateToken(user._id)
       }
     });
   } catch (error) {
@@ -385,7 +398,7 @@ const updatePassword = async (req, res) => {
 
     // Check current password
     if (!user.password) {
-      return res.status(400).json({ success: false, message: 'Cannot update password for Google Auth user without existing password.' });
+       return res.status(400).json({ success: false, message: 'Cannot update password for Google Auth user without existing password.' });
     }
     const isMatch = await user.matchPassword(currentPassword);
     if (!isMatch) {
@@ -412,6 +425,14 @@ const updatePassword = async (req, res) => {
   }
 };
 
+// @desc    Logout user & clear cookies
+// @route   POST /api/auth/logout
+// @access  Public
+const logoutUser = async (req, res) => {
+  clearCsrfCookie(res);
+  res.json({ success: true, message: 'Logged out successfully' });
+};
+
 module.exports = {
   loginUser,
   getMe,
@@ -419,5 +440,6 @@ module.exports = {
   forgotPassword,
   resetPassword,
   updateProfile,
-  updatePassword
+  updatePassword,
+  logoutUser
 };
